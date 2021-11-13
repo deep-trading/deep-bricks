@@ -1,0 +1,119 @@
+@startuml
+skinparam ConditionEndStyle hline
+
+start;
+
+:初始化info1, info2, pos1, pos2;
+note right
+    pos1, pos2 = round(posSize * size precision)
+    避免double影响，转long处理
+end note
+
+' 仓位对冲
+repeat:查询仓位信息，currentPos1，currentPos2;
+
+' 检查当前订单，撤销价格不符合的风险订单
+' 撤销已经完全成交或者部分成交的订单
+
+repeat:查看当前成交记录tradesMap，处理当前挂单;
+    if (挂单是否完全成交) then (完全成交)
+        '此时认为已经对冲完整
+        :对应订单设置为null，无需请求撤单;
+        :移除当前的交易记录;
+    else (部分成交)
+        :撤销该挂单;
+        :根据撤销订单的成交数量与收到成交记录的差对冲;
+        :移除当前的交易记录;
+    endif
+    :计算期望仓位pos1|pos2;
+repeat while ([bidOrder1, askOrder1, bidOrder2, askOrder2])
+
+if (pos1 != currentPos1 || pos2 != currentPos2) then (yes)
+'   订单成交推送准确，自动对冲
+'
+'    当前仓位与本地仓位不一致
+'        撤销当前订单，根据订单已经成交数量，对冲下单
+'        设置仓位交易对挂单为null，避免成交记录对冲重复执行
+'
+'    end note
+    if (pos1 != currentPos1) then (yes)
+        :撤销bidOrder1, askOrder1;
+        :根据撤销订单后的成交数量，计算净成交数量 netSize1;
+    else (no)
+    endif
+    if (pos2 != currentPos2) then (yes)
+        :撤销bidOrder2, askOrder2;
+        :根据撤销订单后的成交数量，计算净成交数量 netSize2;
+    else (no)
+    endif
+    :计算总净成交数量 netSize = netSize1 + netSIze2;
+    :比较价格选择最优下单仓位;
+    :更新pos1|pos2为最新仓位数据;
+    ' 对冲后，仓位数据可能更新延迟，此时等待仓位更新，不能挂单
+else (no)
+    repeat :依次更新当前订单 ;
+    :根据市场A，B生成最新订单以及目标价格;
+    if (订单存在且价格不合理) then (yes)
+        :撤销旧订单，创建新订单;
+    endif
+    repeat while ([bidOrder1, askOrder1, bidOrder2, askOrder2])
+endif
+
+repeat while(sleep 10ms)
+
+:清理所有挂单;
+
+stop
+@enduml
+
+@startuml
+
+start
+
+skinparam ConditionEndStyle hline
+
+:接收到trade notification;
+
+if (trade属于当前订单的成交) then (yes)
+:根据价格选择合适市场对冲;
+:注册当前成交记录;
+else (no)
+endif
+
+stop
+
+@enduml
+
+@startuml
+' 挂单撤单不在一个周期内完成
+
+skinparam ConditionEndStyle hline
+
+start
+
+:初始化info1, info2;
+
+repeat:;
+
+repeat while ([bidOrder1, askOrder1, bidOrder2, askOrder2])
+
+
+repeat:查看当前成交记录tradesMap，处理当前挂单;
+    if (挂单是否完全成交) then (完全成交)
+        '此时认为已经对冲完整
+        :对应订单设置为null，无需请求撤单;
+        :移除当前的交易记录;
+    else (部分成交)
+        :撤销该挂单;
+        :根据撤销订单的成交数量与收到成交记录的差对冲下单;
+        :移除当前的交易记录;
+    endif
+    :计算期望仓位pos1|pos2;
+repeat while ([bidOrder1, askOrder1, bidOrder2, askOrder2])
+
+
+
+
+stop
+
+@enduml

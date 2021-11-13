@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>bricks</artifactId>
+        <groupId>org.eurekaka.bricks</groupId>
+        <version>0.9.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>bricks-distribution</artifactId>
+
+    <properties>
+        <platform>none</platform>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.eurekaka.bricks</groupId>
+            <artifactId>bricks-server</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>${project.parent.name}-${platform}-${project.parent.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+
+        <profile>
+            <id>binance</id>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.eurekaka.bricks</groupId>
+                    <artifactId>bricks-exchange-binance</artifactId>
+                    <version>${project.parent.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>gate</id>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.eurekaka.bricks</groupId>
+                    <artifactId>bricks-exchange-gate</artifactId>
+                    <version>${project.parent.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>huo</id>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.eurekaka.bricks</groupId>
+                    <artifactId>bricks-exchange-huobi</artifactId>
+                    <version>${project.parent.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>ftx</id>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.eurekaka.bricks</groupId>
+                    <artifactId>bricks-exchange-ftx</artifactId>
+                    <version>${project.parent.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>deep</id>
+
+<!--            <properties>-->
+<!--                <platform>deep</platform>-->
+<!--            </properties>-->
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.eurekaka.bricks</groupId>
+                    <artifactId>bricks-exchange-deep</artifactId>
+                    <version>${project.parent.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>market</id>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.eurekaka.bricks</groupId>
+                    <artifactId>bricks-market</artifactId>
+                    <version>${project.parent.version}</version>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <finalName>${project.parent.name}-market-${project.parent.version}</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
+
+</project>
