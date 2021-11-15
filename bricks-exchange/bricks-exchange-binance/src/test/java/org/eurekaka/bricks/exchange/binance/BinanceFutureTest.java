@@ -9,6 +9,7 @@ import org.eurekaka.bricks.common.util.StatisticsUtils;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -38,23 +39,23 @@ public class BinanceFutureTest {
         BlockingQueue<Notification> blockingQueue = new LinkedBlockingQueue<>();
         exchange.process(new ExAction<>(ExAction.ActionType.REGISTER_QUEUE, blockingQueue));
 
-        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_FEES,
-                System.currentTimeMillis() - 8 * 3600000)));
-        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_RISK_LIMIT)));
-        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_BALANCES)));
+//        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_FEES,
+//                System.currentTimeMillis() - 8 * 3600000)));
+//        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_RISK_LIMIT)));
+//        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_BALANCES)));
 
         DepthPricePair depthPricePair = new DepthPricePair(name, symbol, 100);
         SymbolPair symbolPair = new SymbolPair(name, symbol);
 
-        int count = 0;
-        while (count++ < 500) {
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
-            System.out.println(exchange.process(new ExAction<>(
-                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
-            System.out.println(exchange.process(new ExAction<>(
-                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
+//        int count = 0;
+//        while (count++ < 500) {
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
+//            System.out.println(exchange.process(new ExAction<>(
+//                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
+//            System.out.println(exchange.process(new ExAction<>(
+//                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
 //            ExMessage msg = exchange.process(new ExAction<>(ExAction.ActionType.GET_KLINE,
 //                    new KLineValuePair(name, symbol, 30)));
 //            List<KLineValue> lineValues = (List<KLineValue>) msg.getData();
@@ -66,16 +67,30 @@ public class BinanceFutureTest {
 //            System.out.println(StatisticsUtils.getEMA_RSI(lineValues, 14));
 //            System.out.println(StatisticsUtils.getMeanAverage(lineValues, 6));
 //            System.out.println(StatisticsUtils.getMeanAverage(lineValues, 26));
-            Thread.sleep(1000);
-        }
+//            Thread.sleep(1000);
+//        }
 
         Order order = new Order("n1", name, symbol,
                 OrderSide.BUY, OrderType.MARKET, 1, 11, 6);
 //        exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER, order));
-        Thread.sleep(60000);
-        for (Notification notification : blockingQueue) {
-            System.out.println(notification);
-        }
+        Order order2 = new Order("n1", name, symbol,
+                OrderSide.BUY, OrderType.LIMIT_IOC, 2, 5.07, 9);
+        String clientOrderId = order2.getName() + ":" + System.currentTimeMillis();
+        order2.setOrderId(clientOrderId);
+        ExMessage<?> msg = exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER_V2, order2));
+        System.out.println("async make order: " + ((CompletableFuture<CurrentOrder>) msg.getData()).get());
+        ActionPair pair = new ActionPair(name, symbol, clientOrderId);
+        msg = exchange.process(new ExAction<>(ExAction.ActionType.GET_ORDER_V2, pair));
+        System.out.println("async get order: " + ((CompletableFuture<CurrentOrder>) msg.getData()).get());
+        msg = exchange.process(new ExAction<>(ExAction.ActionType.GET_CURRENT_ORDER_V2, pair));
+        System.out.println("async get orders: " + ((CompletableFuture<List<CurrentOrder>>) msg.getData()).get());
+        msg = exchange.process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER_V2, pair));
+        System.out.println("async cancel order: " + ((CompletableFuture<Void>) msg.getData()).get());
+
+//        Thread.sleep(60000);
+//        for (Notification notification : blockingQueue) {
+//            System.out.println(notification);
+//        }
 
         exchange.stop();
     }

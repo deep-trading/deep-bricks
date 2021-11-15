@@ -1,28 +1,32 @@
 package org.eurekaka.bricks.exchange.binance;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import org.eurekaka.bricks.api.FutureExApi;
 import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.HttpUtils;
 import org.eurekaka.bricks.common.util.StatisticsUtils;
 
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.CompletableFuture;
 
 public class BinanceFutureApiTest {
 
     public static void main(String[] args) throws Exception {
-        Properties properties = new Properties();
-        properties.load(ClassLoader.getSystemResourceAsStream("deep/binance-secret.conf"));
+        Config config = ConfigFactory.load("deep/binance-secret.conf");
         AccountConfig accountConfig = new AccountConfig(0, "n1", 1, null,
                 null, null, null, "https://fapi.binance.com", null,
-                properties.getProperty("key"), properties.getProperty("secret"), true);
+                config.getString("key"), config.getString("secret"), true);
 
         // local test
         accountConfig.setProperty("http_proxy_host", "localhost");
         accountConfig.setProperty("http_proxy_port", "8123");
 
-        FutureExApi api = new BinanceFutureApi(accountConfig,
-                HttpUtils.initializeHttpClient(accountConfig.getProperties()));
+        HttpClient httpClient = HttpUtils.initializeHttpClient(accountConfig.getProperties());
+        FutureExApi api = new BinanceFutureApi(accountConfig, httpClient);
 
         String name = "EOS_USDT";
         String symbol = "EOSUSDT";
@@ -65,5 +69,20 @@ public class BinanceFutureApiTest {
 //        System.out.println(StatisticsUtils.getSMA_RSI(lineValues, 14));
 //        System.out.println(StatisticsUtils.getMeanAverage(lineValues, 6));
 //        System.out.println(StatisticsUtils.getMeanAverage(lineValues, 26));
+
+        // 5 async make order test
+        Order order2 = new Order("n1", name, symbol,
+                OrderSide.BUY, OrderType.LIMIT_IOC, 2, 5.07, 9);
+        String clientOrderId = order2.getName() + ":" + System.currentTimeMillis();
+        order2.setOrderId(clientOrderId);
+        CurrentOrder currentOrder = api.asyncMakeOrder(order2).get();
+        System.out.println("async make order: " + currentOrder);
+        System.out.println("get orders: " + api.asyncGetCurrentOrders(symbol).get());
+        System.out.println("get order: " + api.asyncGetOrder(symbol, clientOrderId).get());
+        System.out.println("order: " + api.asyncCancelOrder(symbol, clientOrderId).get());
+
+
+
+        HttpUtils.shutdownHttpClient(httpClient);
     }
 }

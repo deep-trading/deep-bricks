@@ -21,6 +21,17 @@ class BinanceRestV1 {
     public String tranId;
     public String id;
 
+    public String clientOrderId;
+    public double executedQty;
+    public double origQty;
+    public double price;
+    public String side;
+    public String symbol;
+    public String timeInForce;
+    public String type;
+    public String status;
+    public long updateTime;
+
     public BinanceRestV1() {
     }
 }

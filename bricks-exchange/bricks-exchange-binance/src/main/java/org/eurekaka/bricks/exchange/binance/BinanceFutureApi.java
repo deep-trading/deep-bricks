@@ -1,5 +1,6 @@
 package org.eurekaka.bricks.exchange.binance;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectReader;
 import org.eurekaka.bricks.api.FutureExApi;
@@ -15,6 +16,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
@@ -205,6 +208,56 @@ public class BinanceFutureApi implements FutureExApi {
     }
 
     @Override
+    public CompletableFuture<CurrentOrder> asyncMakeOrder(Order order) throws ExApiException {
+        try {
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", order.getSymbol());
+            params.put("side", order.getSide().name());
+            double size = order.getSize();
+            if (size == 0) {
+                throw new ExApiException("async make order failed, size is 0: " + order);
+            }
+            params.put("quantity", String.format("%f", size));
+            if (OrderType.MARKET.equals(order.getOrderType())) {
+                params.put("type", "MARKET");
+                params.put("newOrderRespType", "RESULT");
+            } else if (OrderType.LIMIT.equals(order.getOrderType())) {
+                params.put("price", String.valueOf(order.getPrice()));
+                params.put("timeInForce", "GTX");
+                params.put("type", "LIMIT");
+                params.put("newOrderRespType", "RESULT");
+            } else if (OrderType.LIMIT_IOC.equals(order.getOrderType())) {
+                params.put("type", "LIMIT");
+                params.put("price", String.valueOf(order.getPrice()));
+                params.put("timeInForce", "IOC");
+                params.put("newOrderRespType", "RESULT");
+            }
+            if (order.getOrderId() != null) {
+                params.put("newClientOrderId", order.getOrderId());
+            }
+            String url = generateSignedUrl("/fapi/v1/order", params);
+            HttpRequest request = HttpRequest.newBuilder(new URI(url))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        try {
+                            BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
+                            return new CurrentOrder(result.clientOrderId, order.getName(), order.getSymbol(),
+                                    order.getSide(), order.getOrderType(),
+                                    order.getSize(), result.price, result.executedQty,
+                                    BinanceUtils.getStatus(result.status), result.updateTime);
+                        } catch (Exception e) {
+                            throw new CompletionException("failed to parse body: " + response.body(), e);
+                        }
+                    });
+        } catch (Exception e) {
+            throw new ExApiException("failed to make order.", e);
+        }
+    }
+
+    @Override
     public List<CurrentOrder> getCurrentOrders(String symbol, int type) throws ExApiException {
         try {
             Map<String, String> params = new HashMap<>();
@@ -228,6 +281,97 @@ public class BinanceFutureApi implements FutureExApi {
             return orders;
         } catch (Exception e) {
             throw new ExApiException("failed to get current open orders", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<List<CurrentOrder>> asyncGetCurrentOrders(String symbol) throws ExApiException {
+        try {
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", symbol);
+
+            String url = generateSignedUrl("/fapi/v1/openOrders", params);
+            HttpRequest request = HttpRequest.newBuilder(new URI(url))
+                    .GET()
+                    .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        try {
+                            List<BinanceOrder> result = Utils.mapper.readValue(response.body(), new TypeReference<>() {});
+                            List<CurrentOrder> orders = new ArrayList<>();
+                            for (BinanceOrder order : result) {
+                                orders.add(new CurrentOrder(order.clientOrderId, order.symbol,
+                                        OrderSide.valueOf(order.side),
+                                        BinanceUtils.getOrderType(order.type, order.timeInForce),
+                                        order.origQty, order.price, order.executedQty,
+                                        BinanceUtils.getStatus(order.status), order.updateTime));
+                            }
+                            return orders;
+                        } catch (Exception e) {
+                            throw new CompletionException("failed to parse response body: " + response.body(), e);
+                        }
+                    });
+        } catch (Exception e) {
+            throw new ExApiException("failed to get current orders", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String orderId) throws ExApiException {
+        try {
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", symbol);
+            params.put("origClientOrderId", orderId);
+            String url = generateSignedUrl("/fapi/v1/order", params);
+            HttpRequest request = HttpRequest.newBuilder(new URI(url))
+                    .GET()
+                    .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                try {
+                    BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
+                    return new CurrentOrder(result.clientOrderId, result.symbol,
+                            OrderSide.valueOf(result.side),
+                            BinanceUtils.getOrderType(result.type, result.timeInForce),
+                            result.origQty, result.price, result.executedQty,
+                            BinanceUtils.getStatus(result.status), result.updateTime);
+                } catch (Exception e) {
+                    throw new CompletionException("failed to parse response body: " + response.body(), e);
+                }
+            });
+        } catch (Exception e) {
+            throw new ExApiException("failed to get order", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> asyncCancelOrder(String symbol, String orderId) throws ExApiException {
+        try {
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", symbol);
+            params.put("origClientOrderId", orderId);
+            String url = generateSignedUrl("/fapi/v1/order", params);
+            HttpRequest request = HttpRequest.newBuilder(new URI(url))
+                    .DELETE()
+                    .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(response -> {
+                        if (response.statusCode() != 200) {
+                            try {
+                                BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
+                                if (result.code != -2011) {
+                                    throw new CompletionException(
+                                            new ExApiException("failed to cancel order: " + response.body()));
+                                }
+                            } catch (Exception e) {
+                                throw new CompletionException("failed to parse response: " + response.body(), e);
+                            }
+                        }
+                    });
+        } catch (Exception e) {
+            throw new ExApiException("failed to async cancel order", e);
         }
     }
 
@@ -259,6 +403,7 @@ public class BinanceFutureApi implements FutureExApi {
                     throw new ExApiException("failed to get order, resp: " + response.body());
                 }
             }
+            System.out.println(response.body());
             return new CurrentOrder(result.orderId, result.symbol,
                     OrderSide.valueOf(result.side),
                     OrderType.valueOf(result.type),
@@ -403,6 +548,12 @@ public class BinanceFutureApi implements FutureExApi {
         public double executedQty;
 
         public String symbol;
+
+        public String clientOrderId;
+        public String status;
+        public String timeInForce;
+
+        public long updateTime;
 
         public BinanceOrder() {
         }
