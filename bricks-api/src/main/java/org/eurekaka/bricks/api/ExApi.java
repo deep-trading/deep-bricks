@@ -6,10 +6,12 @@ import org.eurekaka.bricks.common.model.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 定义 exchange 基本动作,接入 rest api 接口
  * 定义 spot，future，option，以及其他不同种类交易对，均需要的基础动作
+ * 添加异步接口
  */
 public interface ExApi {
 
@@ -83,5 +85,81 @@ public interface ExApi {
 
     default List<KLineValue> getKLineValues(KLineValuePair kLineValuePair) throws ExApiException {
         return Collections.emptyList();
+    }
+
+    // 异步接口集合
+
+    /**
+     * 获取所有交易对信息
+     * @return 交易对信息列表
+     * @throws ExApiException 执行失败
+     */
+    default CompletableFuture<List<ExSymbol>> asyncGetSymbolInfos() throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    /**
+     * 通过rest获取账户所有资产
+     * @return 资产列表
+     * @throws ExApiException 执行失败
+     */
+    default CompletableFuture<List<AccountValue>> asyncGetAccountValues() throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<CurrentOrder> asyncMakeOrder(Order order) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String orderId) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<Void> asyncCancelOrder(String symbol, String orderId) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<List<CurrentOrder>> asyncGetCurrentOrders(String symbol) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    /**
+     * 通过rest查询一段时间的kline，系统初始启动时调用，后续通过websocket更新数据
+     * @param kLineValuePair  kline查询信息
+     * @return kline数据
+     * @throws ExApiException 执行失败
+     */
+    default CompletableFuture<List<KLineValue>> asyncGetKLineValues(KLineValuePair kLineValuePair)
+            throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    /**
+     * 内部（子、母）多账户资产操作
+     * @param transfer 转账信息
+     * @throws ExApiException 操作失败
+     */
+    default CompletableFuture<Void> asyncTransferAsset(AssetTransfer transfer) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    /**
+     * 提现到外部账户
+     * @param transfer 转账信息
+     * @throws ExApiException 操作失败
+     */
+    default CompletableFuture<Void> asyncWithdrawAsset(AssetTransfer transfer) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    /**
+     * 查询某账户一段时间内的转账/提现信息
+     * @param transferHistory 转账查询信息
+     * @return 转账/提现历史记录
+     * @throws ExApiException 操作失败
+     */
+    default CompletableFuture<List<AccountAssetRecord>> asyncGetAssetRecords(AssetTransferHistory transferHistory)
+            throws ExApiException {
+        throw new ExApiException("not implemented");
     }
 }

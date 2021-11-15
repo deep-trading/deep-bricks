@@ -81,6 +81,19 @@ public class ExAction<T> {
         GET_ASSET_RECORDS,
         // 内部转账
         TRANSFER_ASSET,
+
+        // v2 代表异步接口
+        // v2 订单操作使用client order id
+        MAKE_ORDER_V2,
+        CANCEL_ORDER_V2,
+        GET_CURRENT_ORDER_V2,
+        GET_ORDER_V2,
+
+        GET_RISK_LIMIT_V2,
+        UPDATE_RISK_LIMIT_V2,
+        WITHDRAW_ASSET_V2,
+        GET_ASSET_RECORDS_V2,
+        TRANSFER_ASSET_V2,
     }
 
 }

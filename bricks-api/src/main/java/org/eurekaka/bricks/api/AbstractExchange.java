@@ -138,6 +138,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
             }
             webSocket.abort();
         }
+        HttpUtils.shutdownHttpClient(httpClient);
         logger.info("stopped exchange: {}", getName());
     }
 
@@ -198,10 +199,20 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
                 case MAKE_ORDER:
                     return makeOrder((Order) action.getData());
+                case MAKE_ORDER_V2:
+                    return makeOrderV2((Order) action.getData());
+
                 case CANCEL_ORDER:
                     return cancelOrder((CancelOrderPair) action.getData());
+                case CANCEL_ORDER_V2:
+                    return cancelOrderV2((ActionPair) action.getData());
+
                 case GET_CURRENT_ORDER:
                     return getCurrentOrders((CurrentOrderPair) action.getData());
+                case GET_ORDER_V2:
+                    return getOrderV2((ActionPair) action.getData());
+                case GET_CURRENT_ORDER_V2:
+                    return getCurrentOrdersV2((ActionPair) action.getData());
 
                 case GET_BID_DEPTH_PRICE:
                     return getBidDepthPrice((DepthPricePair) action.getData());
@@ -382,6 +393,20 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         return new ExMessage<>(ExMessage.ExMsgType.RIGHT, orderId);
     }
 
+    protected ExMessage<CompletableFuture<CurrentOrder>> makeOrderV2(Order order) throws ExApiException {
+        if (order.getOrderId() == null) {
+            order.setOrderId(order.getName() + ":" + System.nanoTime());
+        }
+
+        if (fakeOrder) {
+            CurrentOrder currentOrder = new CurrentOrder(order.getOrderId(), order.getName(), order.getSymbol(),
+                    order.getSide(), order.getOrderType(), order.getSize(), order.getPrice(), 0);
+            return new ExMessage<>(ExMessage.ExMsgType.RIGHT, CompletableFuture.completedFuture(currentOrder));
+        }
+
+        return new ExMessage<>(ExMessage.ExMsgType.RIGHT, api.asyncMakeOrder(order));
+    }
+
     /**
      * 可在此处更改实际下单参数，例如平多平空等
      * @param order 待下单order
@@ -407,6 +432,16 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         return new ExMessage<>(ExMessage.ExMsgType.RIGHT, currentOrder);
     }
 
+    protected ExMessage<CompletableFuture<Void>> cancelOrderV2(ActionPair pair) throws ExApiException {
+        if (fakeOrder) {
+            return new ExMessage<>(ExMessage.ExMsgType.RIGHT, CompletableFuture.completedFuture(null));
+        }
+
+        return new ExMessage<>(ExMessage.ExMsgType.RIGHT,
+                api.asyncCancelOrder(pair.symbol, pair.getOrderId()));
+    }
+
+
     protected ExMessage<List<CurrentOrder>> getCurrentOrders(CurrentOrderPair currentOrderPair) throws ExApiException {
         if (fakeOrder) {
             return new ExMessage<>(ExMessage.ExMsgType.RIGHT, Collections.emptyList());
@@ -418,6 +453,36 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         }
         return new ExMessage<>(ExMessage.ExMsgType.RIGHT, currentOrders);
     }
+
+    protected ExMessage<CompletableFuture<List<CurrentOrder>>> getCurrentOrdersV2(ActionPair pair)
+            throws ExApiException {
+        if (fakeOrder) {
+            return new ExMessage<>(ExMessage.ExMsgType.RIGHT,
+                    CompletableFuture.completedFuture(Collections.emptyList()));
+        }
+
+        return new ExMessage<>(ExMessage.ExMsgType.RIGHT,
+                api.asyncGetCurrentOrders(pair.symbol).thenApply(currentOrders -> {
+                    for (CurrentOrder currentOrder : currentOrders) {
+                        currentOrder.setName(pair.name);
+                    }
+                    return currentOrders;
+                }));
+    }
+
+    protected ExMessage<CompletableFuture<CurrentOrder>> getOrderV2(ActionPair pair)
+            throws ExApiException {
+        if (fakeOrder) {
+            return new ExMessage<>(ExMessage.ExMsgType.RIGHT, CompletableFuture.completedFuture(null));
+        }
+
+        return new ExMessage<>(ExMessage.ExMsgType.RIGHT,
+                api.asyncGetOrder(pair.symbol, pair.getOrderId()).thenApply(order -> {
+                    order.setName(pair.name);
+                    return order;
+                }));
+    }
+
 
     protected ExMessage<DepthPrice> getBidDepthPrice(DepthPricePair depthPricePair) throws ExApiException {
         if (accountStatus.getBidOrderBooks().containsKey(depthPricePair.symbol)) {

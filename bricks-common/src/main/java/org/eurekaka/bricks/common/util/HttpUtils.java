@@ -95,6 +95,12 @@ public class HttpUtils {
         return httpClientBuilder.build();
     }
 
+    public static void shutdownHttpClient(HttpClient httpClient) {
+        if (httpClient.executor().isPresent()) {
+            ((AbstractExecutorService) httpClient.executor().get()).shutdownNow();
+        }
+    }
+
     public static WebSocket createWebSocket(AccountConfig accountConfig, HttpClient httpClient,
                                             WebSocket.Listener listener) throws ExchangeException {
         int httpConnectTimeout = Integer.parseInt(

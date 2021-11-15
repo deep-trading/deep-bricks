@@ -4,6 +4,7 @@ import org.eurekaka.bricks.common.exception.ExApiException;
 import org.eurekaka.bricks.common.model.*;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 期权功能定义，包括交割合约，永续合约
@@ -58,5 +59,22 @@ public interface FutureExApi extends ExApi {
      */
     default double getFundingRate(String symbol) throws ExApiException {
         throw new ExApiException("not implemented.");
+    }
+
+    default CompletableFuture<List<PositionValue>> asyncGetPositionValues() throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<RiskLimitValue> asyncGetRiskLimitValue() throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<Void> asyncUpdateRiskLimit(String symbol, int leverage) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<List<FundingValue>> asyncGetFundingValue(String symbol, long lastTime, long endTime)
+            throws ExApiException {
+        throw new ExApiException("not implemented");
     }
 }
