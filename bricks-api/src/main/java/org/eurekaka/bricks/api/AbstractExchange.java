@@ -395,7 +395,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
     protected ExMessage<CompletableFuture<CurrentOrder>> makeOrderV2(Order order) throws ExApiException {
         if (order.getOrderId() == null) {
-            order.setOrderId(order.getName() + ":" + System.nanoTime());
+            order.setOrderId(order.getName() + "_" + System.nanoTime());
         }
 
         if (fakeOrder) {

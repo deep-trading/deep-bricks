@@ -221,7 +221,7 @@ public class BinanceFutureApi implements FutureExApi {
             if (OrderType.MARKET.equals(order.getOrderType())) {
                 params.put("type", "MARKET");
                 params.put("newOrderRespType", "RESULT");
-            } else if (OrderType.LIMIT.equals(order.getOrderType())) {
+            } else if (OrderType.LIMIT_GTX.equals(order.getOrderType())) {
                 params.put("price", String.valueOf(order.getPrice()));
                 params.put("timeInForce", "GTX");
                 params.put("type", "LIMIT");
@@ -230,6 +230,11 @@ public class BinanceFutureApi implements FutureExApi {
                 params.put("type", "LIMIT");
                 params.put("price", String.valueOf(order.getPrice()));
                 params.put("timeInForce", "IOC");
+                params.put("newOrderRespType", "RESULT");
+            } else if (OrderType.LIMIT_GTC.equals(order.getOrderType())) {
+                params.put("type", "LIMIT");
+                params.put("price", String.valueOf(order.getPrice()));
+                params.put("timeInForce", "GTC");
                 params.put("newOrderRespType", "RESULT");
             }
             if (order.getOrderId() != null) {

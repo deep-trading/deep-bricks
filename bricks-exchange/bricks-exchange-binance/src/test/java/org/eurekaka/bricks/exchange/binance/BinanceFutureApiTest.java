@@ -71,18 +71,25 @@ public class BinanceFutureApiTest {
 //        System.out.println(StatisticsUtils.getMeanAverage(lineValues, 26));
 
         // 5 async make order test
-        Order order2 = new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT_IOC, 2, 5.07, 9);
-        String clientOrderId = order2.getName() + ":" + System.currentTimeMillis();
-        order2.setOrderId(clientOrderId);
-        CurrentOrder currentOrder = api.asyncMakeOrder(order2).get();
-        System.out.println("async make order: " + currentOrder);
-        System.out.println("get orders: " + api.asyncGetCurrentOrders(symbol).get());
-        System.out.println("get order: " + api.asyncGetOrder(symbol, clientOrderId).get());
-        System.out.println("order: " + api.asyncCancelOrder(symbol, clientOrderId).get());
-
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.SELL, OrderType.MARKET, 2, 4.53, 9));
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.58, 9));
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 4.4, 9));
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.SELL, OrderType.LIMIT_IOC, 2, 4.48, 9));
 
 
         HttpUtils.shutdownHttpClient(httpClient);
+    }
+
+    private static void testAsyncOrderApi(FutureExApi api, Order order) throws Exception {
+        String clientOrderId = order.getName() + "_" + System.currentTimeMillis();
+        order.setOrderId(clientOrderId);
+        System.out.println("async make order: " + api.asyncMakeOrder(order).get());
+        System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
+        System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());
+        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
     }
 }

@@ -21,7 +21,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class GateFutureApi implements FutureExApi {
     private static final String EMPTY_STRING_HASHED = "cf83e1357eefb8bdf1542850d66d8007d6" +
@@ -159,6 +162,65 @@ public class GateFutureApi implements FutureExApi {
     }
 
     @Override
+    public CompletableFuture<CurrentOrder> asyncMakeOrder(Order order) throws ExApiException {
+        try {
+            Map<String, String> data = new HashMap<>();
+            data.put("contract", order.getSymbol());
+            if (!contractQuantos.containsKey(order.getSymbol())) {
+                throw new ExApiException("no contract quanto found for " + order.getSymbol());
+            }
+            long size = Math.round(order.getSize() / contractQuantos.get(order.getSymbol()));
+            if (size == 0) {
+                throw new ExApiException("failed to make order, size is 0");
+            }
+            if (OrderSide.SELL.equals(order.getSide())) {
+                size = -size;
+            }
+            data.put("size", String.valueOf(size));
+            if (OrderType.MARKET.equals(order.getOrderType())) {
+                data.put("price", "0");
+                data.put("tif", "ioc");
+            } else if (OrderType.LIMIT_GTX.equals(order.getOrderType())) {
+                data.put("price", String.valueOf(order.getPrice()));
+                data.put("tif", "poc");
+            } else if (OrderType.LIMIT_IOC.equals(order.getOrderType())) {
+                data.put("price", String.valueOf(order.getPrice()));
+                data.put("tif", "ioc");
+            } else if (OrderType.LIMIT_GTC.equals(order.getOrderType())) {
+                data.put("price", String.valueOf(order.getPrice()));
+                data.put("tif", "gtc");
+            } else {
+                throw new ExApiException("unsupported order type: " + order.getOrderType());
+            }
+            data.put("iceberg", "0");
+            data.put("text", "t-" + order.getOrderId());
+            String body = Utils.mapper.writeValueAsString(data);
+            HttpRequest request = generateSignedRequest("POST", BASE_PREFIX + "/orders", body);
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                try {
+                    GateOrder result = Utils.mapper.readValue(response.body(), GateOrder.class);
+//                    System.out.println(response.body());
+                    if (result.id == 0) {
+                        if ("ORDER_POC_IMMEDIATE".equals(result.label)) {
+                            return null;
+                        }
+                        throw new CompletionException(
+                                new ExApiException("failed to make order: " + response.body()));
+                    }
+                    double filled = (result.size - result.left) * contractQuantos.get(result.contract);
+                    return new CurrentOrder(result.text, order.getName(), order.getSymbol(),
+                            order.getSide(), order.getOrderType(), order.getSize(), order.getPrice(),
+                            filled, GateUtils.getStatus(result.status, result.finish_as), result.finish_time);
+                } catch (Exception e) {
+                    throw new CompletionException("failed to parse response body: " + response.body(), e);
+                }
+            });
+        } catch (Exception e) {
+            throw new ExApiException("failed to make order", e);
+        }
+    }
+
+    @Override
     public List<CurrentOrder> getCurrentOrders(String symbol, int type) throws ExApiException {
         try {
             HttpRequest request = generateSignedRequest(BASE_PREFIX + "/orders?contract=" + symbol + "&status=open");
@@ -173,6 +235,70 @@ public class GateFutureApi implements FutureExApi {
                         side, OrderType.LIMIT, size, data.price, size - left));
             }
             return currentOrders;
+        } catch (Exception e) {
+            throw new ExApiException("failed to get current orders", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String orderId) throws ExApiException {
+        try {
+            HttpRequest request = generateSignedRequest(BASE_PREFIX + "/orders/t-" + orderId);
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        try {
+                            GateOrder result = Utils.mapper.readValue(response.body(), GateOrder.class);
+                            if (response.statusCode() != 200) {
+                                if ("SERVER_ERROR".equals(result.label)) {
+                                    return null;
+                                }
+                                throw new CompletionException(new ExApiException(
+                                        "failed to get order: " + response.body()));
+                            }
+
+                            double size = getRealSize(result.contract, result.size);
+                            double left = getRealSize(result.contract, result.left);
+                            return new CurrentOrder(orderId, symbol,
+                                    GateUtils.getOrderSide(result.size),
+                                    GateUtils.getOrderType(result.price, result.tif),
+                                    size, result.fill_price, size - left,
+                                    GateUtils.getStatus(result.status, result.finish_as),
+                                    result.finish_time);
+                        } catch (JsonProcessingException e) {
+                            throw new CompletionException("failed to parse response body", e);
+                        }
+                    });
+        } catch (Exception e) {
+            throw new ExApiException("failed to get order", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<List<CurrentOrder>> asyncGetCurrentOrders(String symbol) throws ExApiException {
+        try {
+            HttpRequest request = generateSignedRequest(BASE_PREFIX + "/orders?contract=" + symbol + "&status=open");
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        if (response.statusCode() != 200) {
+                            throw new CompletionException(new ExApiException(
+                                    "failed to get current orders:" + response.body()));
+                        }
+                        try {
+                            List<GateOrder> orders = Utils.mapper.readValue(response.body(), new TypeReference<>() {});
+                            return orders.stream().map(result -> {
+                                double size = getRealSize(result.contract, result.size);
+                                double left = getRealSize(result.contract, result.left);
+                                return new CurrentOrder(result.text.substring(2), symbol,
+                                        GateUtils.getOrderSide(result.size),
+                                        GateUtils.getOrderType(result.price, result.tif),
+                                        size, result.fill_price, size - left,
+                                        GateUtils.getStatus(result.status, result.finish_as),
+                                        result.finish_time);
+                            }).collect(Collectors.toList());
+                        } catch (JsonProcessingException e) {
+                            throw new CompletionException("failed to parse response body", e);
+                        }
+                    });
         } catch (Exception e) {
             throw new ExApiException("failed to get current orders", e);
         }
@@ -195,6 +321,29 @@ public class GateFutureApi implements FutureExApi {
             OrderSide side = result.size < 0 ? OrderSide.SELL : OrderSide.BUY;
             return new CurrentOrder(result.id, result.contract,
                     side, OrderType.LIMIT, size, result.price, size - left);
+        } catch (Exception e) {
+            throw new ExApiException("failed to cancel order", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> asyncCancelOrder(String symbol, String orderId) throws ExApiException {
+        try {
+            HttpRequest request = generateSignedRequest("DELETE",
+                    BASE_PREFIX + "/orders/t-" + orderId, null);
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(response -> {
+                        if (response.statusCode() != 200) {
+                            try {
+                                GateRespV1 result = Utils.mapper.readValue(response.body(), GateRespV1.class);
+                                if (!"ORDER_NOT_FOUND".equals(result.label)) {
+                                    throw new CompletionException(new ExApiException("failed to cancel order: " + response.body()));
+                                }
+                            } catch (JsonProcessingException e) {
+                                throw new CompletionException("failed to parse response body: " + response.body(), e);
+                            }
+                        }
+                    });
         } catch (Exception e) {
             throw new ExApiException("failed to cancel order", e);
         }

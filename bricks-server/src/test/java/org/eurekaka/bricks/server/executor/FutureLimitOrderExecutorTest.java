@@ -1,6 +1,5 @@
 package org.eurekaka.bricks.server.executor;
 
-import com.typesafe.config.ConfigFactory;
 import org.eurekaka.bricks.api.AccountManager;
 import org.eurekaka.bricks.api.Exchange;
 import org.eurekaka.bricks.api.OrderExecutor;
