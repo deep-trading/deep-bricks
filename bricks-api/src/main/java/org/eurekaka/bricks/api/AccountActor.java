@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
@@ -148,6 +149,46 @@ public class AccountActor {
         }
         return null;
     }
+
+    public CompletableFuture<CurrentOrder> asyncMakeOrder(Order order) throws StrategyException {
+        ExMessage<?> msg = accountManager.getAccount(order.getAccount())
+                .process(new ExAction<>(ExAction.ActionType.MAKE_ORDER_V2, order));
+        if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
+            throw new StrategyException("failed to async make order: " + order, (Exception) msg.getData());
+        }
+        return (CompletableFuture<CurrentOrder>) msg.getData();
+    }
+
+    public CompletableFuture<Void> asyncCancelOrder(Order order) throws StrategyException {
+        ActionPair pair = new ActionPair(order.getName(), order.getSymbol(), order.getOrderId());
+        ExMessage<?> msg = accountManager.getAccount(order.getAccount())
+                .process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER_V2, pair));
+        if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
+            throw new StrategyException("failed to async cancel order: " + order, (Exception) msg.getData());
+        }
+        return (CompletableFuture<Void>) msg.getData();
+    }
+
+    public CompletableFuture<CurrentOrder> asyncGetOrder(Info0 info, String orderId) throws StrategyException {
+        ActionPair pair = new ActionPair(info.getName(), info.getSymbol(), orderId);
+        ExMessage<?> msg = accountManager.getAccount(info.getAccount())
+                .process(new ExAction<>(ExAction.ActionType.GET_ORDER_V2, pair));
+        if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
+            throw new StrategyException("failed to async get order: " + pair, (Exception) msg.getData());
+        }
+        return (CompletableFuture<CurrentOrder>) msg.getData();
+    }
+
+    public CompletableFuture<List<CurrentOrder>> asyncGetCurrentOrders(Info0 info) throws StrategyException {
+        ActionPair pair = new ActionPair(info.getName(), info.getSymbol());
+        ExMessage<?> msg = accountManager.getAccount(info.getAccount())
+                .process(new ExAction<>(ExAction.ActionType.GET_CURRENT_ORDER_V2, pair));
+        if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
+            throw new StrategyException("failed to async get order: " + pair, (Exception) msg.getData());
+        }
+        return (CompletableFuture<List<CurrentOrder>>) msg.getData();
+    }
+
 
     // account balance
 

@@ -72,10 +72,10 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                     accountConfig, accountStatus, api);
 
             this.httpLostTimeout = Integer.parseInt(accountConfig
-                    .getProperty("http_lost_timeout", "15000"));
+                    .getProperty("http_lost_timeout", "2000"));
 
             this.httpPingInterval = Integer.parseInt(accountConfig
-                    .getProperty("http_ping_interval", "3000"));
+                    .getProperty("http_ping_interval", "1000"));
         }
 
         this.fakeOrder = Boolean.parseBoolean(accountConfig

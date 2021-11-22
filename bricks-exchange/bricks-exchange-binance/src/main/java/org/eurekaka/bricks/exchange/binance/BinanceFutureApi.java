@@ -336,6 +336,9 @@ public class BinanceFutureApi implements FutureExApi {
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
                 try {
                     BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
+                    if (result.code == -2013) {
+                        return null;
+                    }
                     return new CurrentOrder(result.clientOrderId, result.symbol,
                             OrderSide.valueOf(result.side),
                             BinanceUtils.getOrderType(result.type, result.timeInForce),

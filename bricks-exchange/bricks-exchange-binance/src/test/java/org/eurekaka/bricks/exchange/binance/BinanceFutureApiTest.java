@@ -79,7 +79,8 @@ public class BinanceFutureApiTest {
 //                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 4.4, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.LIMIT_IOC, 2, 4.48, 9));
-
+        testAsyncCancellingOrderApi(api, new Order("n1", name, symbol,
+                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.01, 8));
 
         HttpUtils.shutdownHttpClient(httpClient);
     }
@@ -91,5 +92,17 @@ public class BinanceFutureApiTest {
         System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
         System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());
         System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
+    }
+
+    private static void testAsyncCancellingOrderApi(FutureExApi api, Order order) throws Exception {
+        String clientOrderId = order.getName() + "_" + System.currentTimeMillis();
+        order.setOrderId(clientOrderId);
+        CompletableFuture<CurrentOrder> orderFuture = api.asyncMakeOrder(order);
+//        Thread.sleep(3);
+        orderFuture.cancel(true);
+        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
+        System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());
+        Thread.sleep(1000);
+        System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
     }
 }
