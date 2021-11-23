@@ -237,8 +237,8 @@ public class BinanceFutureApi implements FutureExApi {
                 params.put("timeInForce", "GTC");
                 params.put("newOrderRespType", "RESULT");
             }
-            if (order.getOrderId() != null) {
-                params.put("newClientOrderId", order.getOrderId());
+            if (order.getClientOrderId() != null) {
+                params.put("newClientOrderId", order.getClientOrderId());
             }
             String url = generateSignedUrl("/fapi/v1/order", params);
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
@@ -249,10 +249,10 @@ public class BinanceFutureApi implements FutureExApi {
                     .thenApply(response -> {
                         try {
                             BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
-                            return new CurrentOrder(result.clientOrderId, order.getName(), order.getSymbol(),
+                            return new CurrentOrder(result.orderId, order.getName(), order.getSymbol(),
                                     order.getSide(), order.getOrderType(),
                                     order.getSize(), result.price, result.executedQty,
-                                    BinanceUtils.getStatus(result.status), result.updateTime);
+                                    BinanceUtils.getStatus(result.status), result.updateTime, result.clientOrderId);
                         } catch (Exception e) {
                             throw new CompletionException("failed to parse body: " + response.body(), e);
                         }
@@ -278,7 +278,7 @@ public class BinanceFutureApi implements FutureExApi {
 
             List<CurrentOrder> orders = new ArrayList<>();
             for (BinanceOrder order : result) {
-                orders.add(new CurrentOrder(order.orderId, order.symbol,
+                orders.add(new CurrentOrder(order.orderId, null, order.symbol,
                         OrderSide.valueOf(order.side),
                         OrderType.valueOf(order.type),
                         order.origQty, order.price, order.executedQty));
@@ -306,11 +306,11 @@ public class BinanceFutureApi implements FutureExApi {
                             List<BinanceOrder> result = Utils.mapper.readValue(response.body(), new TypeReference<>() {});
                             List<CurrentOrder> orders = new ArrayList<>();
                             for (BinanceOrder order : result) {
-                                orders.add(new CurrentOrder(order.clientOrderId, order.symbol,
+                                orders.add(new CurrentOrder(order.orderId, null, order.symbol,
                                         OrderSide.valueOf(order.side),
                                         BinanceUtils.getOrderType(order.type, order.timeInForce),
                                         order.origQty, order.price, order.executedQty,
-                                        BinanceUtils.getStatus(order.status), order.updateTime));
+                                        BinanceUtils.getStatus(order.status), order.updateTime, order.clientOrderId));
                             }
                             return orders;
                         } catch (Exception e) {
@@ -323,11 +323,11 @@ public class BinanceFutureApi implements FutureExApi {
     }
 
     @Override
-    public CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String orderId) throws ExApiException {
+    public CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String clientOrderId) throws ExApiException {
         try {
             Map<String, String> params = new HashMap<>();
             params.put("symbol", symbol);
-            params.put("origClientOrderId", orderId);
+            params.put("origClientOrderId", clientOrderId);
             String url = generateSignedUrl("/fapi/v1/order", params);
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .GET()
@@ -339,11 +339,11 @@ public class BinanceFutureApi implements FutureExApi {
                     if (result.code == -2013) {
                         return null;
                     }
-                    return new CurrentOrder(result.clientOrderId, result.symbol,
+                    return new CurrentOrder(result.orderId, null, result.symbol,
                             OrderSide.valueOf(result.side),
                             BinanceUtils.getOrderType(result.type, result.timeInForce),
                             result.origQty, result.price, result.executedQty,
-                            BinanceUtils.getStatus(result.status), result.updateTime);
+                            BinanceUtils.getStatus(result.status), result.updateTime, result.clientOrderId);
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
                 }
@@ -354,11 +354,11 @@ public class BinanceFutureApi implements FutureExApi {
     }
 
     @Override
-    public CompletableFuture<Void> asyncCancelOrder(String symbol, String orderId) throws ExApiException {
+    public CompletableFuture<Void> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
         try {
             Map<String, String> params = new HashMap<>();
             params.put("symbol", symbol);
-            params.put("origClientOrderId", orderId);
+            params.put("origClientOrderId", clientOrderId);
             String url = generateSignedUrl("/fapi/v1/order", params);
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .DELETE()
@@ -412,7 +412,7 @@ public class BinanceFutureApi implements FutureExApi {
                 }
             }
             System.out.println(response.body());
-            return new CurrentOrder(result.orderId, result.symbol,
+            return new CurrentOrder(result.orderId, null, result.symbol,
                     OrderSide.valueOf(result.side),
                     OrderType.valueOf(result.type),
                     result.origQty, result.price, result.executedQty);

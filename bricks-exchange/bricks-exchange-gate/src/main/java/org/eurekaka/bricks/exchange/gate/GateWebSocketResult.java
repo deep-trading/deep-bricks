@@ -7,18 +7,25 @@ import java.util.List;
 class GateWebSocketResult {
 
     public String status;
+    public String finish_as;
     public String contract;
     public double mark_price;
     public double funding_rate;
 
     public String id;
+    public String text;
     public String order_id;
 
     public double price;
+    public double fill_price;
     public long size;
     public String role;
+    public String tif;
     public long create_time_ms;
     public long finish_time_ms;
+
+    public double mkfr;
+    public double tkfr;
 
     public long time_ms;
 

@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS funding (
 CREATE TABLE IF NOT EXISTS history_order (
     id SERIAL PRIMARY KEY,
     fill_id VARCHAR(64) NOT NULL,
+    client_order_id VARCHAR(64) NULL,
     order_id VARCHAR(64) NOT NULL,
     name VARCHAR(32) NOT NULL,
     symbol VARCHAR(32) NOT NULL,

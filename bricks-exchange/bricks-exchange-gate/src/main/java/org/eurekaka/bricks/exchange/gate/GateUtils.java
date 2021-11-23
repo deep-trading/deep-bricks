@@ -42,5 +42,10 @@ public class GateUtils {
         return size < 0 ? OrderSide.SELL : OrderSide.BUY;
     }
 
-
+    public static String getClientOrderId(String text) {
+        if (text != null && text.startsWith("t-")) {
+            return text.substring(2);
+        }
+        return text;
+    }
 }

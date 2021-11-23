@@ -31,6 +31,8 @@ public class Order {
 
     // 下单后目标平台返回的订单id
     private String orderId;
+    // 添加client order id
+    private String clientOrderId;
 
     public Order(String account, String name, String symbol, OrderSide side,
                  OrderType orderType, double size, double price, long quantity) {
@@ -92,6 +94,14 @@ public class Order {
         return account;
     }
 
+    public String getClientOrderId() {
+        return clientOrderId;
+    }
+
+    public void setClientOrderId(String clientOrderId) {
+        this.clientOrderId = clientOrderId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -106,12 +116,13 @@ public class Order {
                 side == order.side &&
                 orderType == order.orderType &&
                 Objects.equals(orderId, order.orderId) &&
+                Objects.equals(clientOrderId, order.clientOrderId) &&
                 Objects.equals(account, order.account);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, symbol, side, orderType, quantity, size, price, orderId, account);
+        return Objects.hash(id, name, symbol, side, orderType, quantity, size, price, orderId, account, clientOrderId);
     }
 
     @Override
@@ -126,6 +137,7 @@ public class Order {
                 ", size=" + size +
                 ", price=" + price +
                 ", orderId='" + orderId + '\'' +
+                ", clientOrderId='" + clientOrderId + '\'' +
                 ", account='" + account + '\'' +
                 '}';
     }

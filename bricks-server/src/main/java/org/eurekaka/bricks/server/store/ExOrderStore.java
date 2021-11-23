@@ -166,7 +166,7 @@ public class ExOrderStore {
 
 
     private static final String SQL_INSERT_HISTORY_ORDER = "insert into history_order (" +
-            "fill_id, order_id, name, symbol, account, side, type, price, size, result, fee_asset, fee, time) " +
+            "fill_id, client_order_id, order_id, name, symbol, account, side, type, price, size, result, fee_asset, fee, time) " +
             "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String SQL_QUERY_HISTORY_ORDER = "select * from history_order " +
             "where time >= ? and time <= ? ";
@@ -176,18 +176,19 @@ public class ExOrderStore {
              PreparedStatement statement = conn.prepareStatement(SQL_INSERT_HISTORY_ORDER,
                      Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, order.getFillId());
-            statement.setString(2, order.getOrderId());
-            statement.setString(3, order.getName());
-            statement.setString(4, order.getSymbol());
-            statement.setString(5, order.getAccount());
-            statement.setString(6, order.getSide().name());
-            statement.setString(7, order.getType().name());
-            statement.setDouble(8, order.getPrice());
-            statement.setDouble(9, order.getSize());
-            statement.setDouble(10, order.getResult());
-            statement.setString(11, order.getFeeAsset());
-            statement.setDouble(12, order.getFee());
-            statement.setTimestamp(13, new Timestamp(order.getTime()));
+            statement.setString(2, order.getClientOrderId());
+            statement.setString(3, order.getOrderId());
+            statement.setString(4, order.getName());
+            statement.setString(5, order.getSymbol());
+            statement.setString(6, order.getAccount());
+            statement.setString(7, order.getSide().name());
+            statement.setString(8, order.getType().name());
+            statement.setDouble(9, order.getPrice());
+            statement.setDouble(10, order.getSize());
+            statement.setDouble(11, order.getResult());
+            statement.setString(12, order.getFeeAsset());
+            statement.setDouble(13, order.getFee());
+            statement.setTimestamp(14, new Timestamp(order.getTime()));
             statement.execute();
             ResultSet resultSet = statement.getGeneratedKeys();
             while (resultSet.next()) {
@@ -228,6 +229,7 @@ public class ExOrderStore {
             while (resultSet.next()) {
                 TradeNotification order = new TradeNotification(
                         resultSet.getString("fill_id"),
+                        resultSet.getString("client_order_id"),
                         resultSet.getString("order_id"),
                         resultSet.getString("account"),
                         resultSet.getString("name"),

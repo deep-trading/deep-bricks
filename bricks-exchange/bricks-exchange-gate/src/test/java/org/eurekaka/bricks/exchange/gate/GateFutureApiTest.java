@@ -57,20 +57,20 @@ public class GateFutureApiTest {
 
         // 4. 测试异步订单接口
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
-//                OrderSide.SELL, OrderType.MARKET, 2, 4.53, 9));
+//                OrderSide.BUY, OrderType.MARKET, 1, 4.1, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
-//                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.48, 9));
+//                OrderSide.SELL, OrderType.LIMIT_GTX, 2, 4.48, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 4.56, 9));
-        testAsyncOrderApi(api, new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT_IOC, 2, 4.48, 9));
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.SELL, OrderType.LIMIT_IOC, 2, 4.48, 9));
 
         HttpUtils.shutdownHttpClient(httpClient);
     }
 
     private static void testAsyncOrderApi(FutureExApi api, Order order) throws Exception {
         String clientOrderId = order.getName() + "_" + System.currentTimeMillis();
-        order.setOrderId(clientOrderId);
+        order.setClientOrderId(clientOrderId);
         System.out.println("async make order: " + api.asyncMakeOrder(order).get());
         System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
         System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());

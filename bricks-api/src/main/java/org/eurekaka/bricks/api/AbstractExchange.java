@@ -72,7 +72,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                     accountConfig, accountStatus, api);
 
             this.httpLostTimeout = Integer.parseInt(accountConfig
-                    .getProperty("http_lost_timeout", "2000"));
+                    .getProperty("http_lost_timeout", "3000"));
 
             this.httpPingInterval = Integer.parseInt(accountConfig
                     .getProperty("http_ping_interval", "1000"));
@@ -106,6 +106,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
             }
 
             startWebSocketMonitor();
+            sendPingBuffer();
         }
 
         postStart();
@@ -394,8 +395,8 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
     }
 
     protected ExMessage<CompletableFuture<CurrentOrder>> makeOrderV2(Order order) throws ExApiException {
-        if (order.getOrderId() == null) {
-            order.setOrderId(order.getName() + "_" + System.nanoTime());
+        if (order.getClientOrderId() == null) {
+            order.setClientOrderId(order.getName() + "_" + System.nanoTime());
         }
 
         if (fakeOrder) {
@@ -478,7 +479,9 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
         return new ExMessage<>(ExMessage.ExMsgType.RIGHT,
                 api.asyncGetOrder(pair.symbol, pair.getOrderId()).thenApply(order -> {
-                    order.setName(pair.name);
+                    if (order != null) {
+                        order.setName(pair.name);
+                    }
                     return order;
                 }));
     }

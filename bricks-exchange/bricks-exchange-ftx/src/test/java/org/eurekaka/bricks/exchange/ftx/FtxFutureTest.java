@@ -34,31 +34,31 @@ public class FtxFutureTest {
         BlockingQueue<TradeNotification> blockingQueue = new LinkedBlockingQueue<>();
         exchange.process(new ExAction<>(ExAction.ActionType.REGISTER_QUEUE, blockingQueue));
 
-        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_FEES,
-                System.currentTimeMillis() - 3600000)));
-        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_RISK_LIMIT)));
-        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_BALANCES)));
+//        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_FEES,
+//                System.currentTimeMillis() - 3600000)));
+//        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_RISK_LIMIT)));
+//        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_BALANCES)));
 
         DepthPricePair depthPricePair = new DepthPricePair(name, symbol, 100);
         SymbolPair symbolPair = new SymbolPair(name, symbol);
-
-        int count = 0;
-        while (count++ < 500) {
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_MARK_USDT)));
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITION, symbolPair)));
-            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
-            System.out.println(exchange.process(new ExAction<>(
-                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
-            System.out.println(exchange.process(new ExAction<>(
-                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
-            Thread.sleep(500);
-        }
+//
+//        int count = 0;
+//        while (count++ < 500) {
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_MARK_USDT)));
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITION, symbolPair)));
+//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
+//            System.out.println(exchange.process(new ExAction<>(
+//                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
+//            System.out.println(exchange.process(new ExAction<>(
+//                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
+//            Thread.sleep(500);
+//        }
 
         Order order = new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT, 1, 9.5, 6);
-//        exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER, order));
+                OrderSide.BUY, OrderType.MARKET, 1, 3.5, 6);
+        exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER, order));
         Thread.sleep(3000);
         for (Notification notification : blockingQueue) {
             System.out.println(notification);

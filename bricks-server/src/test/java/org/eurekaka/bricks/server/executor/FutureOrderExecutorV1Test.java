@@ -74,9 +74,8 @@ public class FutureOrderExecutorV1Test {
                 new DepthPricePair(name, symbol, DepthPricePair.ZERO_DEPTH_QTY))))
                 .thenReturn(new ExMessage(ExMessage.ExMsgType.RIGHT,
                         new DepthPrice(name, symbol, 5.123, 325, 63.4)));
-        CurrentOrder currentOrder1 = new CurrentOrder("id1", symbol,
+        CurrentOrder currentOrder1 = new CurrentOrder("id1", name, symbol,
                 OrderSide.SELL, OrderType.LIMIT, 175.85, 5.124, 55.35);
-        currentOrder1.setName(name);
         Mockito.when(ex1.process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER,
                 new CancelOrderPair(name, symbol, "id1"))))
                 .thenReturn(new ExMessage(ExMessage.ExMsgType.RIGHT, currentOrder1));
@@ -91,8 +90,7 @@ public class FutureOrderExecutorV1Test {
 
         // 开始退场
         CurrentOrder currentOrder2 = new CurrentOrder(
-                "id2", symbol, OrderSide.SELL, OrderType.LIMIT, 120.55, 5.124, 94.72);
-        currentOrder2.setName(name);
+                "id2", name, symbol, OrderSide.SELL, OrderType.LIMIT, 120.55, 5.124, 94.72);
         Mockito.when(ex1.process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER,
                 new CancelOrderPair(name, symbol, "id2")))).thenReturn(
                 new ExMessage(ExMessage.ExMsgType.RIGHT, currentOrder2));
@@ -199,9 +197,8 @@ public class FutureOrderExecutorV1Test {
 
         Mockito.when(ex1.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER, order1)))
                 .thenReturn(new ExMessage(ExMessage.ExMsgType.RIGHT, "id1"));
-        CurrentOrder currentOrder1 = new CurrentOrder("id1", symbol,
+        CurrentOrder currentOrder1 = new CurrentOrder("id1", name, symbol,
                 OrderSide.BUY, OrderType.LIMIT, 156.31, 5.113, 35.81);
-        currentOrder1.setName(name);
         Mockito.when(ex1.process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER,
                 new CancelOrderPair(name, symbol, "id1"))))
                 .thenReturn(new ExMessage(ExMessage.ExMsgType.RIGHT, currentOrder1));

@@ -90,6 +90,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
             }
         } else if ("futures.usertrades".equals(resp.channel) && "update".equals(resp.event)) {
+            System.out.println(message);
             for (GateWebSocketResult result : resp.result) {
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {
@@ -106,7 +107,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                         type = OrderType.LIMIT;
                         rate = accountConfig.getMakerRate();
                     }
-                    TradeNotification notification = new TradeNotification(result.id, result.order_id,
+                    TradeNotification notification = new TradeNotification(result.id,
+                            GateUtils.getClientOrderId(result.text), result.order_id,
                             accountConfig.getName(), name, result.contract, side, type,
                             result.price, size, result.price * size,
                             "USDT", result.price * size * rate, result.create_time_ms);
@@ -114,6 +116,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
             }
         } else if ("futures.orders".equals(resp.channel) && "update".equals(resp.event)) {
+            System.out.println(message);
             for (GateWebSocketResult result : resp.result) {
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {
@@ -124,14 +127,15 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                         size = -size;
                     }
                     size = api.getSize(result.contract, size);
-                    OrderType type = OrderType.MARKET;
-                    if ("maker".equals(result.role)) {
-                        type = OrderType.LIMIT;
-                    }
+                    OrderType type = GateUtils.getOrderType(result.price, result.tif);
                     double leftSize = api.getSize(result.contract, result.left);
+                    String clientOrderId = GateUtils.getClientOrderId(result.text);
                     OrderNotification notification = new OrderNotification(result.id, name,
                             result.contract, accountConfig.getName(), side, type,
-                            size, result.price, size - Math.abs(leftSize));
+                            size, result.price, size - Math.abs(leftSize),
+                            result.fill_price, clientOrderId,
+                            GateUtils.getStatus(result.status, result.finish_as),
+                            result.finish_time_ms);
                     accountStatus.getNotificationQueue().add(notification);
                 }
             }

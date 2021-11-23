@@ -129,7 +129,7 @@ public class BhexSpotApi implements ExApi {
                         side = OrderSide.SELL;
                     }
                     if (type == 0 || type == myType) {
-                        orders.add(new CurrentOrder(bhexRestOrder.orderId,
+                        orders.add(new CurrentOrder(bhexRestOrder.orderId, null,
                                 bhexRestOrder.symbol, side, OrderType.LIMIT, bhexRestOrder.origQty,
                                 bhexRestOrder.price, bhexRestOrder.executedQty));
                     }
@@ -159,7 +159,7 @@ public class BhexSpotApi implements ExApi {
                 throw new ExApiException("resp code is not 0, resp: " + resp);
             }
             // 返回空当前订单
-            return new CurrentOrder(orderId, symbol, OrderSide.NONE,
+            return new CurrentOrder(orderId, null, symbol, OrderSide.NONE,
                     OrderType.LIMIT, 0, 0, 0);
         } catch (Exception e) {
             throw new ExApiException("failed to cancel order, symbol: " + symbol + ", order id: " + orderId, e);

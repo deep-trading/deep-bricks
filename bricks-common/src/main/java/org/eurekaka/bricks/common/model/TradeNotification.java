@@ -8,6 +8,7 @@ public class TradeNotification implements Notification {
     private int id;
 
     private String fillId;
+    private String clientOrderId;
     private String orderId;
     private String account;
     private String name;
@@ -40,6 +41,26 @@ public class TradeNotification implements Notification {
         this.time = time;
     }
 
+    public TradeNotification(String fillId, String clientOrderId, String orderId, String account,
+                             String name, String symbol, OrderSide side, OrderType type,
+                             double price, double size, double result,
+                             String feeAsset, double fee, long time) {
+        this.fillId = fillId;
+        this.clientOrderId = clientOrderId;
+        this.orderId = orderId;
+        this.account = account;
+        this.name = name;
+        this.symbol = symbol;
+        this.side = side;
+        this.type = type;
+        this.price = price;
+        this.size = size;
+        this.result = result;
+        this.feeAsset = feeAsset;
+        this.fee = fee;
+        this.time = time;
+    }
+
     public int getId() {
         return id;
     }
@@ -54,6 +75,14 @@ public class TradeNotification implements Notification {
 
     public void setFillId(String fillId) {
         this.fillId = fillId;
+    }
+
+    public String getClientOrderId() {
+        return clientOrderId;
+    }
+
+    public void setClientOrderId(String clientOrderId) {
+        this.clientOrderId = clientOrderId;
     }
 
     public String getOrderId() {
@@ -158,6 +187,7 @@ public class TradeNotification implements Notification {
     public String toString() {
         return "TradeNotification{" +
                 "fillId='" + fillId + '\'' +
+                ", clientOrderId='" + clientOrderId + '\'' +
                 ", orderId='" + orderId + '\'' +
                 ", account='" + account + '\'' +
                 ", name='" + name + '\'' +
@@ -183,6 +213,7 @@ public class TradeNotification implements Notification {
                 Double.compare(that.result, result) == 0 &&
                 Double.compare(that.fee, fee) == 0 &&
                 time == that.time && fillId.equals(that.fillId) &&
+                Objects.equals(clientOrderId, that.clientOrderId) &&
                 orderId.equals(that.orderId) && account.equals(that.account) &&
                 name.equals(that.name) && symbol.equals(that.symbol) &&
                 side == that.side && type == that.type && feeAsset.equals(that.feeAsset);
@@ -190,7 +221,7 @@ public class TradeNotification implements Notification {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, fillId, orderId, account, name, symbol,
+        return Objects.hash(id, fillId, clientOrderId, orderId, account, name, symbol,
                 side, type, price, size, result, feeAsset, fee, time);
     }
 }

@@ -205,7 +205,7 @@ public class HuoFutureApi implements FutureExApi {
             for (HuoFutureOrder order : resp.data.orders) {
                 int orderType = order.order_type % 2;
                 if (type == 0 || type == 1 && orderType == 1 || type == 2 && orderType == 0) {
-                    currentOrders.add(new CurrentOrder(order.order_id_str, order.contract_code,
+                    currentOrders.add(new CurrentOrder(order.order_id_str, null, order.contract_code,
                             OrderSide.valueOf(order.direction.toUpperCase()), OrderType.LIMIT,
                             order.volume, order.price, order.trade_volume));
                 }
@@ -254,7 +254,7 @@ public class HuoFutureApi implements FutureExApi {
             }
 
             HuoFutureData data = resp2.data.get(0);
-            return new CurrentOrder(data.order_id_str, data.contract_code,
+            return new CurrentOrder(data.order_id_str, null, data.contract_code,
                     OrderSide.valueOf(data.direction.toUpperCase()),
                     OrderType.LIMIT, data.volume, data.price, data.trade_volume);
         } catch (Exception e) {

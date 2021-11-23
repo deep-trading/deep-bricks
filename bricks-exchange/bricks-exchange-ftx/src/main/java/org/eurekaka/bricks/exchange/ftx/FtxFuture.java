@@ -12,7 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FtxFuture extends AbstractFutureExchange {
-    private ExecutorService myService;
 
     private final long fetchInterval;
 
@@ -23,8 +22,7 @@ public class FtxFuture extends AbstractFutureExchange {
         fetchInterval = Long.parseLong(
                 accountConfig.getProperty("fetch_interval", "5000"));
 
-        myService = Executors.newSingleThreadScheduledExecutor();
-        myService.execute(new FtxFetcher());
+        httpClient.executor().get().execute(new FtxFetcher());
     }
 
     @Override
@@ -48,11 +46,6 @@ public class FtxFuture extends AbstractFutureExchange {
         } catch (Exception e) {
             throw new ExchangeException("failed to start ftx future exchange", e);
         }
-    }
-
-    @Override
-    protected void preStop() {
-        myService.shutdownNow();
     }
 
     @Override

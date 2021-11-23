@@ -17,9 +17,9 @@ public class AsyncStateOrder extends Order {
 
     public AsyncStateOrder(String account, String name, String symbol, OrderSide side,
                            OrderType orderType, double size, double price, long quantity,
-                           String orderId, OrderState state) {
+                           String clientOrderId, OrderState state) {
         super(account, name, symbol, side, orderType, size, price, quantity);
-        this.setOrderId(orderId);
+        this.setClientOrderId(clientOrderId);
         this.state = state;
     }
 

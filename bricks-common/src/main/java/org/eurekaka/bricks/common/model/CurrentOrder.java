@@ -25,50 +25,26 @@ public class CurrentOrder {
     private final long time;
     private final OrderStatus status;
 
-    public CurrentOrder(String id, String symbol, OrderSide side, OrderType type,
+    @JsonProperty("client_order_id")
+    private String clientOrderId;
+
+    public CurrentOrder(String id, String name, String symbol, OrderSide side, OrderType type,
                         double size, double price, double filledSize) {
         this.id = id;
-        this.symbol = symbol;
-        this.side = side;
-        this.type = type;
-        this.size = size;
-        this.price = price;
-        this.filledSize = filledSize;
-        this.status = OrderStatus.NIL;
-        this.time = System.currentTimeMillis();
-    }
-
-    public CurrentOrder(String id, String symbol, OrderSide side, OrderType type,
-                        double size, double price, double filledSize, OrderStatus status, long time) {
-        this.id = id;
-        this.symbol = symbol;
-        this.side = side;
-        this.type = type;
-        this.size = size;
-        this.price = price;
-        this.filledSize = filledSize;
-        this.name = null;
-        this.status = status;
-        this.time = time;
-    }
-
-    public CurrentOrder(String id, String name, String symbol, OrderSide side,
-                        OrderType type, double size, double price, double filledSize) {
-        this.id = id;
-        this.symbol = symbol;
-        this.side = side;
-        this.type = type;
-        this.size = size;
-        this.price = price;
-        this.filledSize = filledSize;
         this.name = name;
+        this.symbol = symbol;
+        this.side = side;
+        this.type = type;
+        this.size = size;
+        this.price = price;
+        this.filledSize = filledSize;
         this.status = OrderStatus.NIL;
         this.time = System.currentTimeMillis();
     }
 
     public CurrentOrder(String id, String name, String symbol, OrderSide side,
                         OrderType type, double size, double price, double filledSize,
-                        OrderStatus status, long time) {
+                        OrderStatus status, long time, String clientOrderId) {
         this.id = id;
         this.symbol = symbol;
         this.side = side;
@@ -79,6 +55,7 @@ public class CurrentOrder {
         this.name = name;
         this.status = status;
         this.time = time;
+        this.clientOrderId = clientOrderId;
     }
 
     public String getId() {
@@ -152,6 +129,7 @@ public class CurrentOrder {
                 ", name='" + name + '\'' +
                 ", time=" + time +
                 ", status=" + status +
+                ", clientOrderId='" + clientOrderId + '\'' +
                 '}';
     }
 
@@ -165,11 +143,14 @@ public class CurrentOrder {
                 Double.compare(that.filledSize, filledSize) == 0 &&
                 time == that.time && id.equals(that.id) &&
                 symbol.equals(that.symbol) && side == that.side &&
-                type == that.type && name.equals(that.name) && status == that.status;
+                type == that.type && Objects.equals(name, that.name) &&
+                status == that.status &&
+                Objects.equals(clientOrderId, that.clientOrderId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, symbol, side, type, size, price, filledSize, name, time, status);
+        return Objects.hash(id, symbol, side, type, size, price,
+                filledSize, name, time, status, clientOrderId);
     }
 }

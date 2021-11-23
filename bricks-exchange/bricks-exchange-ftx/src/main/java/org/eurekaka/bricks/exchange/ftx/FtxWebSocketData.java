@@ -4,6 +4,7 @@ import java.util.List;
 
 public class FtxWebSocketData {
     public String id;
+    public String clientId;
     public String orderId;
     public String future;
     public double price;

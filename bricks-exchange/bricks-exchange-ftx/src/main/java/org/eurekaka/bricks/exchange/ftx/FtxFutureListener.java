@@ -25,6 +25,7 @@ public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, Ft
             return;
         }
         if ("fills".equals(msg.channel) && msg.data.future != null) {
+            System.out.println(message);
             String name = accountStatus.getSymbols().get(msg.data.future);
             if (name == null) {
                 return;
@@ -43,8 +44,9 @@ public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, Ft
             }
 
             if (accountStatus.getNotificationQueue() != null) {
+                // todo: client order id 不存在 fills 里
                 accountStatus.getNotificationQueue().add(new TradeNotification(
-                        msg.data.id, msg.data.orderId, accountConfig.getName(), name,
+                        msg.data.id, msg.data.clientId, msg.data.orderId, accountConfig.getName(), name,
                         msg.data.future, side, type, msg.data.price, msg.data.size,
                         msg.data.price * msg.data.size, "USD", msg.data.fee,
                         System.currentTimeMillis()));
@@ -70,6 +72,7 @@ public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, Ft
                                 size, price, quantity, entryPrice, pnl, System.currentTimeMillis()));
             }
         } else if ("orders".equals(msg.channel) && msg.data.market != null) {
+            System.out.println(message);
             String name = accountStatus.getSymbols().get(msg.data.market);
             if (name == null) {
                 return;

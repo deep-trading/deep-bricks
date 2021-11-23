@@ -197,7 +197,7 @@ public class FtxFutureApi implements FutureExApi {
                 if (type == 0 ||
                         type == 1 && "buy".equals(res.side) ||
                         type == 2 && "sell".equals(res.side)) {
-                    orders.add(new CurrentOrder(res.id, res.future,
+                    orders.add(new CurrentOrder(res.id, null, res.future,
                             OrderSide.valueOf(res.side.toUpperCase()),
                             OrderType.valueOf(res.type.toUpperCase()),
                             res.size, res.price, res.filledSize));
@@ -230,7 +230,7 @@ public class FtxFutureApi implements FutureExApi {
                 throw new ExApiException("failed to get success resp: " + response.body());
             }
             FtxRestResult res = result2.result;
-            return new CurrentOrder(res.id, res.future,
+            return new CurrentOrder(res.id, null, res.future,
                     OrderSide.valueOf(res.side.toUpperCase()),
                     OrderType.valueOf(res.type.toUpperCase()),
                     res.size, res.price, res.filledSize);

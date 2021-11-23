@@ -106,6 +106,7 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
                 BinanceOrderUpdate update = msg.orderUpdate;
 //                logger.debug("order trade update: {}", message);
                 if (accountStatus.getNotificationQueue() != null) {
+//                    System.out.println(message);
                     String name = accountStatus.getSymbols().get(update.symbol);
                     if (name != null) {
                         OrderSide side = OrderSide.NONE;
@@ -114,20 +115,18 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
                         } else if ("BUY".equals(update.side)) {
                             side = OrderSide.BUY;
                         }
-                        OrderType type = OrderType.NONE;
-                        if ("LIMIT".equals(update.type)) {
-                            type = OrderType.LIMIT;
-                        } else if ("MARKET".equals(update.type)) {
-                            type = OrderType.MARKET;
-                        }
+                        OrderType type = BinanceUtils.getOrderType(update.type, update.tif);
                         if (update.id != null && !update.id.equals("0")) {
-                            accountStatus.getNotificationQueue().add(new TradeNotification(
-                                    update.id, update.order_id, accountConfig.getName(), name, update.symbol,
+                            accountStatus.getNotificationQueue().add(new TradeNotification(update.id,
+                                    update.clientOrderId, update.order_id, accountConfig.getName(), name, update.symbol,
                                     side, type, update.price, update.size, update.price * update.size,
                                     update.feeSymbol, update.fee, update.time));
+                        } else {
                             accountStatus.getNotificationQueue().add(new OrderNotification(
                                     update.order_id, name, update.symbol, accountConfig.getName(),
-                                    side, type, update.orderSize, update.orderPrice, update.filledSize));
+                                    side, type, update.orderSize, update.orderPrice, update.filledSize,
+                                    update.avgPrice, update.clientOrderId,
+                                    BinanceUtils.getStatus(update.state), update.time));
                         }
                     }
                 }
@@ -223,6 +222,8 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         public String id;
         @JsonProperty("i")
         public String order_id;
+        @JsonProperty("c")
+        public String clientOrderId;
         @JsonProperty("s")
         public String symbol;
         @JsonProperty("S")
@@ -239,15 +240,19 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         public long time;
         @JsonProperty("o")
         public String type;
+        @JsonProperty("f")
+        public String tif;
         @JsonProperty("X")
         public String state;
         @JsonProperty("x")
         public String executeType;
         @JsonProperty("z")
         public double filledSize;
+        @JsonProperty("ap")
+        public double avgPrice;
         @JsonProperty("q")
         public double orderSize;
-        @JsonProperty("ap")
+        @JsonProperty("p")
         public double orderPrice;
 
         public BinanceOrderUpdate() {

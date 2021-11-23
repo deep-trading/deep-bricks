@@ -428,7 +428,8 @@ public class FutureLimitOrderExecutor implements OrderExecutor {
                             ExOrder order = currentOrders.get(finishedOrder.getId());
                             if (order != null) {
                                 // double check，完成该订单
-                                orderStore.storeOrderResult(order.getOrderId(), 0, finishedOrder.getStatus());
+                                orderStore.storeOrderResult(order.getOrderId(), 0,
+                                        finishedOrder.getStatus().name());
                                 orderStore.updatePlanOrderLeftQuantity(
                                         0, System.currentTimeMillis(), order.getPlanId());
                                 currentOrders.remove(order.getOrderId());

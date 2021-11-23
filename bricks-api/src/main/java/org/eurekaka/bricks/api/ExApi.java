@@ -111,11 +111,11 @@ public interface ExApi {
         throw new ExApiException("not implemented");
     }
 
-    default CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String orderId) throws ExApiException {
+    default CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String clientOrderId) throws ExApiException {
         throw new ExApiException("not implemented");
     }
 
-    default CompletableFuture<Void> asyncCancelOrder(String symbol, String orderId) throws ExApiException {
+    default CompletableFuture<Void> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
         throw new ExApiException("not implemented");
     }
 

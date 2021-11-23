@@ -215,7 +215,7 @@ public class BhexFutureApi implements FutureExApi {
                     double size = getSize(value.symbol, value.origQty);
                     double filledSize = getSize(value.symbol, value.executedQty);
 
-                    currentOrders.add(new CurrentOrder(value.orderId, value.symbol,
+                    currentOrders.add(new CurrentOrder(value.orderId, null, value.symbol,
                             side, OrderType.LIMIT, size, value.price, filledSize));
                 }
             }
@@ -264,7 +264,7 @@ public class BhexFutureApi implements FutureExApi {
             double size = getSize(value.symbol, value.origQty);
             double filledSize = getSize(value.symbol, value.executedQty);
 
-            return new CurrentOrder(value.orderId, value.symbol,
+            return new CurrentOrder(value.orderId, null, value.symbol,
                     side, OrderType.LIMIT, size, value.price, filledSize);
         } catch (Exception e) {
             throw new ExApiException("failed to cancel order", e);
