@@ -102,18 +102,12 @@ public class CurrentOrder {
         return time;
     }
 
-    public String getStatus() {
-        if (!OrderStatus.NIL.equals(status)) {
-            return status.name();
-        }
+    public OrderStatus getStatus() {
+        return status;
+    }
 
-        if (filledSize == size && size > 0) {
-            return OrderStatus.FILLED.name();
-        } else if (filledSize == 0) {
-            return OrderStatus.CANCELLED.name();
-        } else {
-            return OrderStatus.PART_FILLED.name();
-        }
+    public String getClientOrderId() {
+        return clientOrderId;
     }
 
     @Override

@@ -12,7 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -53,6 +55,7 @@ public class Strategy07 implements Strategy {
 
     private int orderIndex1;
     private int orderIndex2;
+    private final Map<String, Double> filledOrderSize;
 
     public Strategy07(BrickContext brickContext, StrategyConfig strategyConfig) {
         this.brickContext = brickContext;
@@ -62,6 +65,8 @@ public class Strategy07 implements Strategy {
 
         this.orderIndex1 = 0;
         this.orderIndex2 = 0;
+
+        filledOrderSize = new ConcurrentHashMap<>();
     }
 
 
@@ -123,6 +128,13 @@ public class Strategy07 implements Strategy {
             timeCounter = System.currentTimeMillis();
         }
 
+        // 清理订单通知记录
+        filledOrderSize.entrySet().removeIf(e ->
+                (bidOrder1 == null || !e.getKey().equals(bidOrder1.getClientOrderId())) &&
+                (askOrder1 == null || !e.getKey().equals(askOrder1.getClientOrderId())) &&
+                (bidOrder2 == null || !e.getKey().equals(bidOrder2.getClientOrderId())) &&
+                (askOrder2 == null || !e.getKey().equals(askOrder2.getClientOrderId())));
+
         boolean checked1 = checkOrderInterval(1);
         AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY,
                 bidOrder1, posQuantity1, checked1);
@@ -153,62 +165,75 @@ public class Strategy07 implements Strategy {
 
     @Override
     public void notify(Notification notification) throws StrategyException {
-        if (notification instanceof TradeNotification) {
-            TradeNotification trade = (TradeNotification) notification;
-            logger.info("{}: received trade: {}", System.currentTimeMillis() - timeCounter, trade);
-            // 确认成交订单来自于当前四个挂单
-            AsyncStateOrder order = null;
-            if (bidOrder1 != null && trade.getOrderId().equals(bidOrder1.getOrderId()) ||
-                    askOrder1 != null && trade.getOrderId().equals(askOrder1.getOrderId())) {
-                order = generateMarketHedgingOrder(trade, info2);
-                long base = posQuantity1;
-                if (trade.getSide().equals(OrderSide.BUY)) {
-                    posQuantity1 = base + Math.round(trade.getResult());
-                } else {
-                    posQuantity1 = base - Math.round(trade.getResult());
+        if (notification instanceof OrderNotification) {
+            OrderNotification orderNotify = (OrderNotification) notification;
+            if (orderNotify.getFilledSize() > 0) {
+                logger.info("{}: received order notify: {}", System.currentTimeMillis() - timeCounter, orderNotify);
+                // 确认成交订单来自于当前四个挂单
+                AsyncStateOrder order = null;
+                if (bidOrder1 != null && orderNotify.getClientOrderId().equals(bidOrder1.getClientOrderId()) ||
+                        askOrder1 != null && orderNotify.getClientOrderId().equals(askOrder1.getClientOrderId())) {
+                    order = generateMarketHedgingOrder(orderNotify, info2);
+                    if (order != null && order.getQuantity() > 0) {
+                        long base = posQuantity1;
+                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
+                            posQuantity1 = base + order.getQuantity();
+                        } else {
+                            posQuantity1 = base - order.getQuantity();
+                        }
+                    }
+                } else if (bidOrder2 != null && orderNotify.getClientOrderId().equals(bidOrder2.getClientOrderId()) ||
+                        askOrder2 != null && orderNotify.getClientOrderId().equals(askOrder2.getClientOrderId())) {
+                    order = generateMarketHedgingOrder(orderNotify, info1);
+                    if (order != null && order.getQuantity() > 0) {
+                        long base = posQuantity2;
+                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
+                            posQuantity2 = base + order.getQuantity();
+                        } else {
+                            posQuantity2 = base - order.getQuantity();
+                        }
+                    }
                 }
-            } else if (bidOrder2 != null && trade.getOrderId().equals(bidOrder2.getOrderId()) ||
-                    askOrder2 != null && trade.getOrderId().equals(askOrder2.getOrderId())) {
-                order = generateMarketHedgingOrder(trade, info1);
-                long base = posQuantity2;
-                if (trade.getSide().equals(OrderSide.BUY)) {
-                    posQuantity2 = base + Math.round(trade.getResult());
-                } else {
-                    posQuantity2 = base - Math.round(trade.getResult());
+                if (order != null) {
+                    // 直接市价单对冲
+                    AsyncStateOrder finalOrder = order;
+                    accountActor.asyncMakeOrder(order).thenAccept(o -> {
+                        finalOrder.setState(OrderState.SUBMITTED);
+                        logger.info("{}: made trade hedging order: {}", System.currentTimeMillis() - timeCounter, o);
+                    });
+                    // todo:: 支持IOC or GTC 对冲
                 }
-            }
-            if (order != null) {
-                // 直接市价单对冲
-                AsyncStateOrder finalOrder = order;
-                accountActor.asyncMakeOrder(order).thenAccept(o -> {
-                    finalOrder.setState(OrderState.SUBMITTED);
-                    logger.info("{}: made trade hedging order: {}", System.currentTimeMillis() - timeCounter, o);
-                });
-                // todo:: 支持IOC or GTC 对冲
             }
         }
     }
 
-    private AsyncStateOrder generateMarketHedgingOrder(TradeNotification trade, Info0 other) {
-        // 生成对冲订单
-        double size = trade.getSize();
-        // 记录所有成交信息
-        long quantity = Math.round(trade.getResult());
-        if (quantity < minOrderQuantity) {
-            logger.info("too small trade: {}", trade);
-            return null;
-        }
-        OrderSide side = OrderSide.BUY;
-        if (trade.getSide().equals(OrderSide.BUY)) {
-            // 下卖单对冲
-            side = OrderSide.SELL;
-        }
-        size = Utils.round(size, sizePrecision);
+    private AsyncStateOrder generateMarketHedgingOrder(OrderNotification orderNotify, Info0 other) {
+        double sizeDiff = orderNotify.getFilledSize() -
+                filledOrderSize.getOrDefault(orderNotify.getClientOrderId(), 0D);
+        if (sizeDiff > 0) {
+            long quantity = Math.round(sizeDiff * orderNotify.getPrice());
+            if (quantity < minOrderQuantity) {
+                logger.info("too small order filled size diff: {}, order: {}", sizeDiff, orderNotify);
+                return null;
+            }
+            filledOrderSize.put(orderNotify.getClientOrderId(), orderNotify.getFilledSize());
 
-        String orderId = trade.getName() + "_" + System.currentTimeMillis() + orderIndex2++;
+            // 记录所有成交信息
+            OrderSide side = OrderSide.BUY;
+            if (orderNotify.getSide().equals(OrderSide.BUY)) {
+                // 下卖单对冲
+                side = OrderSide.SELL;
+            }
+            double size = Utils.round(sizeDiff, sizePrecision);
 
-        return new AsyncStateOrder(other.getAccount(), other.getName(), other.getSymbol(),
-                side, OrderType.MARKET, size, 0, quantity, orderId, OrderState.SUBMITTING);
+            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + orderIndex2++;
+            double price = orderNotify.getPrice();
+
+            return new AsyncStateOrder(other.getAccount(), other.getName(), other.getSymbol(),
+                    side, OrderType.MARKET, size, price, quantity, clientOrderId, OrderState.SUBMITTING);
+        }
+
+        return null;
     }
 
     private AsyncStateOrder updateOrder(Info0 info, Info0 other, OrderSide side,
@@ -266,11 +291,15 @@ public class Strategy07 implements Strategy {
         // 若是可以下单
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
             if (checked) {
-                String orderId = info.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex1++;
-                order.setOrderId(orderId);
+                String clientOrderId = info.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex1++;
+                order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
-                    order.setState(OrderState.SUBMITTED);
+                    if (OrderStatus.NEW.equals(newOrder.getStatus())) {
+                        order.setState(OrderState.SUBMITTED);
+                    } else {
+                        order.setState(OrderState.CANCELLED);
+                    }
                     logger.info("{}: made new order: {}", System.currentTimeMillis() - timeCounter, newOrder);
                 });
 

@@ -90,7 +90,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
             }
         } else if ("futures.usertrades".equals(resp.channel) && "update".equals(resp.event)) {
-            System.out.println(message);
+//            System.out.println(message);
             for (GateWebSocketResult result : resp.result) {
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {
@@ -116,7 +116,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
             }
         } else if ("futures.orders".equals(resp.channel) && "update".equals(resp.event)) {
-            System.out.println(message);
+//            System.out.println(message);
             for (GateWebSocketResult result : resp.result) {
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {

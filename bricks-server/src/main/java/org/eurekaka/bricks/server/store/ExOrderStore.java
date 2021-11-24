@@ -167,7 +167,7 @@ public class ExOrderStore {
 
     private static final String SQL_INSERT_HISTORY_ORDER = "insert into history_order (" +
             "fill_id, client_order_id, order_id, name, symbol, account, side, type, price, size, result, fee_asset, fee, time) " +
-            "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String SQL_QUERY_HISTORY_ORDER = "select * from history_order " +
             "where time >= ? and time <= ? ";
 

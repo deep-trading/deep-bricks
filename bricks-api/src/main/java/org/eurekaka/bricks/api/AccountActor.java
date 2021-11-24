@@ -160,7 +160,7 @@ public class AccountActor {
     }
 
     public CompletableFuture<Void> asyncCancelOrder(Order order) throws StrategyException {
-        ActionPair pair = new ActionPair(order.getName(), order.getSymbol(), order.getOrderId());
+        ActionPair pair = new ActionPair(order.getName(), order.getSymbol(), order.getClientOrderId());
         ExMessage<?> msg = accountManager.getAccount(order.getAccount())
                 .process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER_V2, pair));
         if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
@@ -169,8 +169,8 @@ public class AccountActor {
         return (CompletableFuture<Void>) msg.getData();
     }
 
-    public CompletableFuture<CurrentOrder> asyncGetOrder(Info0 info, String orderId) throws StrategyException {
-        ActionPair pair = new ActionPair(info.getName(), info.getSymbol(), orderId);
+    public CompletableFuture<CurrentOrder> asyncGetOrder(Info0 info, String clientOrderId) throws StrategyException {
+        ActionPair pair = new ActionPair(info.getName(), info.getSymbol(), clientOrderId);
         ExMessage<?> msg = accountManager.getAccount(info.getAccount())
                 .process(new ExAction<>(ExAction.ActionType.GET_ORDER_V2, pair));
         if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {

@@ -475,7 +475,7 @@ public class FutureOrderExecutorV1 implements OrderExecutor {
             if (message.getType() == ExMessage.ExMsgType.RIGHT) {
                 CurrentOrder currentOrder = (CurrentOrder) message.getData();
                 double leftSize = order.getSize() - currentOrder.getFilledSize();
-                orderStore.storeOrderResult(order.getOrderId(), leftSize, currentOrder.getStatus());
+                orderStore.storeOrderResult(order.getOrderId(), leftSize, currentOrder.getStatus().name());
                 PlanOrder planOrder = limitPlanOrders.get(order.getPlanId());
                 if (planOrder == null) {
                     orderStore.updatePlanOrderLeftQuantity(0L, System.currentTimeMillis(), order.getPlanId());
