@@ -74,7 +74,7 @@ public class BinanceFutureTest {
                 OrderSide.BUY, OrderType.MARKET, 1, 11, 6);
 //        exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER, order));
         Order order2 = new Order("n1", name, symbol,
-                OrderSide.SELL, OrderType.LIMIT_IOC, 2, 5.07, 9);
+                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.183, 9);
         String clientOrderId = order2.getName() + "_" + System.currentTimeMillis();
         order2.setClientOrderId(clientOrderId);
         ExMessage<?> msg = exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER_V2, order2));
@@ -84,6 +84,7 @@ public class BinanceFutureTest {
         System.out.println("async get order: " + ((CompletableFuture<CurrentOrder>) msg.getData()).get());
         msg = exchange.process(new ExAction<>(ExAction.ActionType.GET_CURRENT_ORDER_V2, pair));
         System.out.println("async get orders: " + ((CompletableFuture<List<CurrentOrder>>) msg.getData()).get());
+        Thread.sleep(5000);
         msg = exchange.process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER_V2, pair));
         System.out.println("async cancel order: " + ((CompletableFuture<Void>) msg.getData()).get());
 

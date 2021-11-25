@@ -121,13 +121,12 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
                                     update.clientOrderId, update.order_id, accountConfig.getName(), name, update.symbol,
                                     side, type, update.price, update.size, update.price * update.size,
                                     update.feeSymbol, update.fee, update.time));
-                        } else {
-                            accountStatus.getNotificationQueue().add(new OrderNotification(
-                                    update.order_id, name, update.symbol, accountConfig.getName(),
-                                    side, type, update.orderSize, update.orderPrice, update.filledSize,
-                                    update.avgPrice, update.clientOrderId,
-                                    BinanceUtils.getStatus(update.state), update.time));
                         }
+                        accountStatus.getNotificationQueue().add(new OrderNotification(
+                                update.order_id, name, update.symbol, accountConfig.getName(),
+                                side, type, update.orderSize, update.orderPrice, update.filledSize,
+                                update.avgPrice, update.clientOrderId,
+                                BinanceUtils.getStatus(update.state), update.time));
                     }
                 }
             } else if ("listenKeyExpired".equals(msg.eventName)) {

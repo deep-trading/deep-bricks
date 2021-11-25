@@ -17,6 +17,7 @@ public class BinanceUtils {
             case "PARTIALLY_FILLED":
                 return OrderStatus.PART_FILLED;
             case "CANCELLED":
+            case "CANCELED":
                 return OrderStatus.CANCELLED;
             case "REJECTED":
                 return OrderStatus.REJECTED;
