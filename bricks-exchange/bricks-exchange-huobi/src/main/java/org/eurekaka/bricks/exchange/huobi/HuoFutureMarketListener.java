@@ -10,13 +10,15 @@ import java.net.http.WebSocket;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
 public class HuoFutureMarketListener extends WebSocketListener<FutureAccountStatus, HuoFutureApi> {
     public HuoFutureMarketListener(AccountConfig accountConfig,
-                                  FutureAccountStatus accountStatus, HuoFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                                  FutureAccountStatus accountStatus,
+                                   HuoFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
     }
 
     @Override

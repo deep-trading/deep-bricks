@@ -7,13 +7,15 @@ import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.Utils;
 
 import java.net.http.WebSocket;
+import java.util.concurrent.Executor;
 
 public class HuoFutureAccountListener extends WebSocketListener<FutureAccountStatus, HuoFutureApi> {
     private final ObjectReader reader;
 
     public HuoFutureAccountListener(AccountConfig accountConfig,
-                                    FutureAccountStatus accountStatus, HuoFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                                    FutureAccountStatus accountStatus,
+                                    HuoFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
 
         this.reader = Utils.mapper.reader().forType(HuoFutureWebSocketV2.class)
                 .with(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);

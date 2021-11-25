@@ -8,14 +8,16 @@ import java.net.http.WebSocket;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
 public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, FtxFutureApi> {
 
     public FtxFutureListener(AccountConfig accountConfig,
-                             FutureAccountStatus accountStatus, FtxFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                             FutureAccountStatus accountStatus,
+                             FtxFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
     }
 
     @Override

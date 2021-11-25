@@ -69,7 +69,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         // 若account config websocket 为null，则不启动websocket部分的功能
         if (accountConfig.getWebsocket() != null) {
             this.listener = ClzUtils.createListener(accountConfig.getListenerClz(),
-                    accountConfig, accountStatus, api);
+                    accountConfig, accountStatus, api, httpClient.executor().get());
 
             this.httpLostTimeout = Integer.parseInt(accountConfig
                     .getProperty("http_lost_timeout", "3000"));

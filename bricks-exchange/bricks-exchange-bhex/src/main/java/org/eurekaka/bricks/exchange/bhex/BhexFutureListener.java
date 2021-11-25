@@ -9,11 +9,12 @@ import org.eurekaka.bricks.common.util.Utils;
 
 import java.net.http.WebSocket;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class BhexFutureListener extends WebSocketListener<FutureAccountStatus, BhexFutureApi> {
     public BhexFutureListener(AccountConfig accountConfig,
-                              FutureAccountStatus accountStatus, BhexFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                              FutureAccountStatus accountStatus, BhexFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
     }
 
     @Override

@@ -9,6 +9,7 @@ import org.eurekaka.bricks.common.util.Utils;
 import java.net.http.WebSocket;
 import java.util.Comparator;
 import java.util.TreeMap;
+import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
@@ -18,8 +19,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 
     public GateFutureListener(AccountConfig accountConfig,
                               FutureAccountStatus accountStatus,
-                              GateFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                              GateFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
 
         reader = Utils.mapper.reader(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
                 .forType(GateWebSocketResponse.class);

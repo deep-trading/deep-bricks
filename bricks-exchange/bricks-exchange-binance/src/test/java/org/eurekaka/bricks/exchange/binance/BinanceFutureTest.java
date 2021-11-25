@@ -74,7 +74,7 @@ public class BinanceFutureTest {
                 OrderSide.BUY, OrderType.MARKET, 1, 11, 6);
 //        exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER, order));
         Order order2 = new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.183, 9);
+                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.123, 9);
         String clientOrderId = order2.getName() + "_" + System.currentTimeMillis();
         order2.setClientOrderId(clientOrderId);
         ExMessage<?> msg = exchange.process(new ExAction<>(ExAction.ActionType.MAKE_ORDER_V2, order2));

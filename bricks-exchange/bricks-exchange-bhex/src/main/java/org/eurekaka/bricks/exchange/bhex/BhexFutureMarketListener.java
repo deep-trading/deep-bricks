@@ -5,12 +5,13 @@ import org.eurekaka.bricks.common.model.AccountConfig;
 import org.eurekaka.bricks.common.model.FutureAccountStatus;
 
 import java.net.http.WebSocket;
+import java.util.concurrent.Executor;
 
 public class BhexFutureMarketListener extends WebSocketListener<FutureAccountStatus, BhexFutureApi> {
     public BhexFutureMarketListener(AccountConfig accountConfig,
                                     FutureAccountStatus accountStatus,
-                                    BhexFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                                    BhexFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
     }
 
     @Override

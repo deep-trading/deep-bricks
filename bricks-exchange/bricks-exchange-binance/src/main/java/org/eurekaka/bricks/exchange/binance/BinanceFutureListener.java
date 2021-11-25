@@ -9,14 +9,16 @@ import java.net.http.WebSocket;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
 public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus, BinanceFutureApi> {
 
     public BinanceFutureListener(AccountConfig accountConfig,
-                                 FutureAccountStatus accountStatus, BinanceFutureApi api) {
-        super(accountConfig, accountStatus, api);
+                                 FutureAccountStatus accountStatus,
+                                 BinanceFutureApi api, Executor executor) {
+        super(accountConfig, accountStatus, api, executor);
     }
 
     @Override

@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 
 public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi> implements WebSocket.Listener {
@@ -27,10 +30,14 @@ public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi
     protected A accountStatus;
     protected B api;
 
-    public WebSocketListener(AccountConfig accountConfig, A accountStatus, B api) {
+    private final Executor executor;
+
+    public WebSocketListener(AccountConfig accountConfig, A accountStatus, B api, Executor executor) {
         this.accountConfig = accountConfig;
         this.accountStatus = accountStatus;
         this.api = api;
+
+        this.executor = executor;
 
         this.binaryParts = new ArrayList<>();
     }
@@ -44,15 +51,16 @@ public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi
             for (CharSequence part : parts) {
                 text.append(part);
             }
-            try {
-                logger.trace("received message: {}", text);
-                processWholeText(webSocket, text.toString());
-            } catch (Throwable t) {
-                logger.error("failed to process message: {}", text, t);
-            }
+            accumulatedMessage.completeAsync(() -> {
+                try {
+                    processWholeText(webSocket, text.toString());
+                } catch (Throwable e) {
+                    logger.error("failed to process message: {}", text, e);
+                }
+                return null;
+            }, executor);
 
             parts.clear();
-            accumulatedMessage.complete(null);
             CompletionStage<?> cf = accumulatedMessage;
             accumulatedMessage = new CompletableFuture<>();
             return cf;

@@ -34,7 +34,8 @@ public class HuoFuture extends AbstractFutureExchange {
     public HuoFuture(AccountConfig accountConfig) {
         super(accountConfig, new FutureAccountStatus());
 
-        this.marketListener = new HuoFutureMarketListener(accountConfig, accountStatus, (HuoFutureApi) api);
+        this.marketListener = new HuoFutureMarketListener(accountConfig,
+                accountStatus, (HuoFutureApi) api, httpClient.executor().get());
     }
 
     @Override

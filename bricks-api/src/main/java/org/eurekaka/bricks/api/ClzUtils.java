@@ -10,6 +10,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.util.concurrent.Executor;
 
 /**
  * 创建定义class 反射方法
@@ -18,11 +19,11 @@ public class ClzUtils {
 
     public static <A extends AccountStatus, B extends ExApi> WebSocket.Listener createListener(
             String listenerClz, AccountConfig accountConfig,
-            A accountStatus, B api) {
+            A accountStatus, B api, Executor executor) {
         try {
             Class<?> clz = Class.forName(listenerClz);
             Constructor<?> constructor = clz.getConstructors()[0];
-            return (WebSocket.Listener) constructor.newInstance(accountConfig, accountStatus, api);
+            return (WebSocket.Listener) constructor.newInstance(accountConfig, accountStatus, api, executor);
         } catch (ClassNotFoundException | InstantiationException |
                 IllegalAccessException | InvocationTargetException e) {
             throw new InitializeException("failed to create websocket listener " + listenerClz, e);
