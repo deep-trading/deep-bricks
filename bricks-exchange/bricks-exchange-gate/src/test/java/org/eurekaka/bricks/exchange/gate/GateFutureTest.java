@@ -39,21 +39,21 @@ public class GateFutureTest {
 //        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_RISK_LIMIT)));
 //        System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_BALANCES)));
 //
-//        DepthPricePair depthPricePair = new DepthPricePair(name, symbol, 100);
+        DepthPricePair depthPricePair = new DepthPricePair(name, symbol, 100);
 //        SymbolPair symbolPair = new SymbolPair(name, symbol);
 //
-//        int count = 0;
-//        while (count++ < 500) {
+        int count = 0;
+        while (count++ < 500) {
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITION, symbolPair)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
-//            System.out.println(exchange.process(new ExAction<>(
-//                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
-//            System.out.println(exchange.process(new ExAction<>(
-//                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
-//            Thread.sleep(500);
-//        }
+            System.out.println(exchange.process(new ExAction<>(
+                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
+            System.out.println(exchange.process(new ExAction<>(
+                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
+            Thread.sleep(500);
+        }
 
 //        Order order = new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.MARKET, 4, 11, 6);

@@ -63,6 +63,11 @@ public class GateFuture extends AbstractFutureExchange {
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request1), true);
 
             payload.clear();
+            payload.add(symbol);
+            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+                    "futures.book_ticker", "subscribe", payload)), true);
+
+            payload.clear();
             payload.add(accountConfig.getUid());
             payload.add(symbol);
             GateWebSocketRequest request2 = new GateWebSocketRequest(

@@ -6,9 +6,7 @@ import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.Utils;
 
 import java.net.http.WebSocket;
-import java.util.Comparator;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
@@ -51,14 +49,17 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
             // 使用bookTicker更新 order book 的买一卖一
             SocketBookTicker msg = Utils.mapper.readValue(message, SocketBookTicker.class);
             if (accountStatus.getBidOrderBooks().containsKey(msg.symbol)) {
-                TreeMap<Double, Double> map = accountStatus.getBidOrderBooks().get(msg.symbol);
+                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
+                        accountStatus.getBidOrderBooks().get(msg.symbol));
                 boolean removed = map.entrySet().removeIf(entry -> entry.getKey() > msg.bidPrice);
                 if (removed) {
                     map.put(msg.bidPrice, msg.bidSize);
                 }
             }
+
             if (accountStatus.getAskOrderBooks().containsKey(msg.symbol)) {
-                TreeMap<Double, Double> map = accountStatus.getAskOrderBooks().get(msg.symbol);
+                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
+                        accountStatus.getAskOrderBooks().get(msg.symbol));
                 boolean removed = map.entrySet().removeIf(entry -> entry.getKey() < msg.askPrice);
                 if (removed) {
                     map.put(msg.askPrice, msg.askSize);

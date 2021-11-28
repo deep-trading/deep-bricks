@@ -1,5 +1,6 @@
 package org.eurekaka.bricks.exchange.gate;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectReader;
 import org.eurekaka.bricks.api.WebSocketListener;
@@ -7,8 +8,7 @@ import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.Utils;
 
 import java.net.http.WebSocket;
-import java.util.Comparator;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
@@ -16,23 +16,28 @@ import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 public class GateFutureListener extends WebSocketListener<FutureAccountStatus, GateFutureApi> {
 
     private final ObjectReader reader;
+    private final ObjectReader reader1;
+    private final ObjectReader reader2;
 
     public GateFutureListener(AccountConfig accountConfig,
                               FutureAccountStatus accountStatus,
                               GateFutureApi api, Executor executor) {
         super(accountConfig, accountStatus, api, executor);
 
-        reader = Utils.mapper.reader(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-                .forType(GateWebSocketResponse.class);
+        reader = Utils.mapper.reader().forType(GateWebSocketResp.class);
+        reader1 = Utils.mapper.reader(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+                .forType(new TypeReference<List<GateWebSocketResult>>() {});
+        reader2 = Utils.mapper.reader().forType(GateWebSocketResultV2.class);
     }
 
     @Override
     protected void processWholeText(WebSocket webSocket, String message) throws Exception {
-        GateWebSocketResponse resp = reader.readValue(message);
+        GateWebSocketResp resp = reader.readValue(message);
         if ("futures.pong".equals(resp.channel)) {
             accountStatus.updateLastPongTime();
         } else if ("futures.tickers".equals(resp.channel) && "update".equals(resp.event)) {
-            for (GateWebSocketResult result : resp.result) {
+            List<GateWebSocketResult> results = reader1.readValue(resp.result);
+            for (GateWebSocketResult result : results) {
                 long price = Math.round(result.mark_price * PRECISION);
                 if (price > 0) {
                     NetValue value = new NetValue(result.contract, accountConfig.getName(), price);
@@ -41,8 +46,10 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 accountStatus.getFundingRates().put(result.contract, result.funding_rate);
             }
         } else if ("futures.order_book".equals(resp.channel)) {
+            List<GateWebSocketResult> results = reader1.readValue(resp.result);
             if ("all".equals(resp.event)) {
-                for (GateWebSocketResult result : resp.result) {
+//                System.out.println("all: " + resp.result);
+                for (GateWebSocketResult result : results) {
 //                        if (!result.bids.isEmpty()) {
 //                            bidPrices.put(result.contract, result.bids.get(result.bids.size() - 1).price);
 //                        }
@@ -64,7 +71,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
 
             } else if ("update".equals(resp.event)) {
-                for (GateWebSocketResult result : resp.result) {
+//                System.out.println("update: " + resp.result);
+                for (GateWebSocketResult result : results) {
                     if (result.book_size > 0) {
                         if (accountStatus.getBidOrderBooks().containsKey(result.book_contract)) {
                             accountStatus.getBidOrderBooks().get(result.book_contract).put(result.book_price,
@@ -90,9 +98,29 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                     }
                 }
             }
+        } else if ("futures.book_ticker".equals(resp.channel) && "update".equals(resp.event)) {
+            GateWebSocketResultV2 result = reader2.readValue(resp.result);
+//            System.out.println(resp.result);
+            if (result.bidPrice > 0 && result.bidSize != 0) {
+                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
+                        accountStatus.getBidOrderBooks().get(result.contract));
+                boolean removed = map.entrySet().removeIf(entry -> entry.getKey() > result.bidPrice);
+                if (removed) {
+                    map.put(result.bidPrice, api.getSize(result.contract, result.bidSize));
+                }
+            }
+            if (result.askPrice > 0 && result.askSize != 0) {
+                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
+                        accountStatus.getAskOrderBooks().get(result.contract));
+                boolean removed = map.entrySet().removeIf(entry -> entry.getKey() < result.askPrice);
+                if (removed) {
+                    map.put(result.askPrice, api.getSize(result.contract, result.askSize));
+                }
+            }
         } else if ("futures.usertrades".equals(resp.channel) && "update".equals(resp.event)) {
 //            System.out.println(message);
-            for (GateWebSocketResult result : resp.result) {
+            List<GateWebSocketResult> results = reader1.readValue(resp.result);
+            for (GateWebSocketResult result : results) {
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {
                     OrderSide side = OrderSide.BUY;
@@ -118,7 +146,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
             }
         } else if ("futures.orders".equals(resp.channel) && "update".equals(resp.event)) {
 //            System.out.println(message);
-            for (GateWebSocketResult result : resp.result) {
+            List<GateWebSocketResult> results = reader1.readValue(resp.result);
+            for (GateWebSocketResult result : results) {
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {
                     OrderSide side = OrderSide.BUY;
@@ -141,7 +170,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
             }
         } else if ("futures.positions".equals(resp.channel) && "update".equals(resp.event)) {
-            for (GateWebSocketResult result : resp.result) {
+            List<GateWebSocketResult> results = reader1.readValue(resp.result);
+            for (GateWebSocketResult result : results) {
                 if ("single".equals(result.mode)) {
                     String name = accountStatus.getSymbols().get(result.contract);
                     if (name != null) {
