@@ -226,7 +226,7 @@ public class Strategy07 implements Strategy {
             }
             double size = Utils.round(sizeDiff, sizePrecision);
 
-            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + orderIndex2++;
+            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex2++;
             double price = orderNotify.getPrice();
 
             return new AsyncStateOrder(other.getAccount(), other.getName(), other.getSymbol(),
@@ -244,7 +244,7 @@ public class Strategy07 implements Strategy {
         }
 
         // 生成推荐订单，order id = null
-        AsyncStateOrder order = generateBaseOrder(info, other, side);
+        AsyncStateOrder order = generateBaseOrder(info, other, side, posQuantity);
 
         // 始终保证第一时间取消价格错误的订单
         // 异步取消订单，等待下个周期再下单
@@ -278,12 +278,6 @@ public class Strategy07 implements Strategy {
         }
 
         // todo:: 检查订单是否满足下单条件，足够余额，价格范围等
-        if (side.equals(OrderSide.BUY) && posQuantity + order.getQuantity() >= maxPositionQuantity ||
-                side.equals(OrderSide.SELL) && posQuantity - order.getQuantity() <= -maxPositionQuantity) {
-            // 超出最大仓位限制，不再下单
-            return null;
-        }
-
         if (order.getQuantity() < minOrderQuantity) {
             return null;
         }
@@ -310,14 +304,25 @@ public class Strategy07 implements Strategy {
         return null;
     }
 
-    private AsyncStateOrder generateBaseOrder(Info0 info, Info0 other, OrderSide side) throws StrategyException {
+    private AsyncStateOrder generateBaseOrder(Info0 info, Info0 other, OrderSide side,
+                                              long posQuantity) throws StrategyException {
         if (!side.equals(OrderSide.BUY) && !side.equals(OrderSide.SELL)) {
             throw new StrategyException("side error: " + side);
         }
 
-        int orderQuantity = strategyConfig.getInt("order_quantity", 100);
+        long orderQuantity = strategyConfig.getInt("order_quantity", 100);
         if (strategyConfig.getBoolean("rand_order_quantity", true)) {
             orderQuantity += System.nanoTime() % orderQuantity;
+        }
+        if (side.equals(OrderSide.BUY) && posQuantity < -orderQuantity) {
+            orderQuantity = -posQuantity;
+        } else if (side.equals(OrderSide.SELL) && posQuantity > orderQuantity) {
+            orderQuantity = posQuantity;
+        }
+        if (side.equals(OrderSide.BUY) && posQuantity >= maxPositionQuantity ||
+                side.equals(OrderSide.SELL) && posQuantity <= -maxPositionQuantity) {
+            // 超出最大仓位限制，不再下单
+            orderQuantity = 0;
         }
 
         AsyncStateOrder order = null;
