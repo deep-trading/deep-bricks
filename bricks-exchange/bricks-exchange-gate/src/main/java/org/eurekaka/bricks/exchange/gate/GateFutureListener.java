@@ -63,7 +63,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                     }
                     accountStatus.getBidOrderBooks().put(result.contract, bidOrderBook);
 
-                    TreeMap<Double, Double> askOrderBook = new TreeMap<>();
+                    TreeMap<Double, Double> askOrderBook = new TreeMap<>(Comparator.naturalOrder());
                     for (GateWebSocketOrderBook ask : result.asks) {
                         askOrderBook.put(ask.price, api.getSize(result.contract, ask.size));
                     }
@@ -74,27 +74,19 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 //                System.out.println("update: " + resp.result);
                 for (GateWebSocketResult result : results) {
                     if (result.book_size > 0) {
-                        if (accountStatus.getBidOrderBooks().containsKey(result.book_contract)) {
-                            accountStatus.getBidOrderBooks().get(result.book_contract).put(result.book_price,
-                                    api.getSize(result.book_contract, result.book_size));
-                        }
-//                            sendLastPrice(new ExLastPrice(name,
-//                                    result.book_contract, "bid", result.book_price));
+                        Utils.updateOrderBookEntry(accountStatus.getBidOrderBooks(), result.book_contract,
+                                result.book_price, api.getSize(result.book_contract, result.book_size));
                     } else if (result.book_size < 0) {
-                        if (accountStatus.getAskOrderBooks().containsKey(result.book_contract)) {
-                            accountStatus.getAskOrderBooks().get(result.book_contract).put(result.book_price,
-                                    api.getSize(result.book_contract, -result.book_size));
-                        }
+                        Utils.updateOrderBookEntry(accountStatus.getAskOrderBooks(), result.book_contract,
+                                result.book_price, api.getSize(result.book_contract, -result.book_size));
 //                            sendLastPrice(new ExLastPrice(name,
 //                                    result.book_contract, "ask", result.book_price));
                     } else {
                         // 0 不知道是bid还是ask
-                        if (accountStatus.getBidOrderBooks().containsKey(result.book_contract)) {
-                            accountStatus.getBidOrderBooks().get(result.book_contract).remove(result.book_price);
-                        }
-                        if (accountStatus.getAskOrderBooks().containsKey(result.book_contract)) {
-                            accountStatus.getAskOrderBooks().get(result.book_contract).remove(result.book_price);
-                        }
+                        Utils.removeOrderBookEntry(accountStatus.getBidOrderBooks(),
+                                result.book_contract, result.book_price);
+                        Utils.removeOrderBookEntry(accountStatus.getAskOrderBooks(),
+                                result.book_contract, result.book_price);
                     }
                 }
             }
@@ -102,20 +94,12 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
             GateWebSocketResultV2 result = reader2.readValue(resp.result);
 //            System.out.println(resp.result);
             if (result.bidPrice > 0 && result.bidSize != 0) {
-                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
-                        accountStatus.getBidOrderBooks().get(result.contract));
-                boolean removed = map.entrySet().removeIf(entry -> entry.getKey() > result.bidPrice);
-                if (removed) {
-                    map.put(result.bidPrice, api.getSize(result.contract, result.bidSize));
-                }
+                Utils.updateOrderBookTicker(accountStatus.getBidOrderBooks(), result.contract,
+                        result.bidPrice, api.getSize(result.contract, result.bidSize));
             }
             if (result.askPrice > 0 && result.askSize != 0) {
-                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
-                        accountStatus.getAskOrderBooks().get(result.contract));
-                boolean removed = map.entrySet().removeIf(entry -> entry.getKey() < result.askPrice);
-                if (removed) {
-                    map.put(result.askPrice, api.getSize(result.contract, result.askSize));
-                }
+                Utils.updateOrderBookTicker(accountStatus.getAskOrderBooks(), result.contract,
+                        result.askPrice, api.getSize(result.contract, result.askSize));
             }
         } else if ("futures.usertrades".equals(resp.channel) && "update".equals(resp.event)) {
 //            System.out.println(message);

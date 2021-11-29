@@ -47,15 +47,15 @@ public class BinanceFutureTest {
         DepthPricePair depthPricePair = new DepthPricePair(name, symbol, 100);
         SymbolPair symbolPair = new SymbolPair(name, symbol);
 
-//        int count = 0;
-//        while (count++ < 500) {
+        int count = 0;
+        while (count++ < 500) {
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
-//            System.out.println(exchange.process(new ExAction<>(
-//                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
-//            System.out.println(exchange.process(new ExAction<>(
-//                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
+            System.out.println(exchange.process(new ExAction<>(
+                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
+            System.out.println(exchange.process(new ExAction<>(
+                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
 //            ExMessage msg = exchange.process(new ExAction<>(ExAction.ActionType.GET_KLINE,
 //                    new KLineValuePair(name, symbol, 30)));
 //            List<KLineValue> lineValues = (List<KLineValue>) msg.getData();
@@ -67,8 +67,8 @@ public class BinanceFutureTest {
 //            System.out.println(StatisticsUtils.getEMA_RSI(lineValues, 14));
 //            System.out.println(StatisticsUtils.getMeanAverage(lineValues, 6));
 //            System.out.println(StatisticsUtils.getMeanAverage(lineValues, 26));
-//            Thread.sleep(1000);
-//        }
+            Thread.sleep(1000);
+        }
 
         Order order = new Order("n1", name, symbol,
                 OrderSide.BUY, OrderType.MARKET, 1, 11, 6);

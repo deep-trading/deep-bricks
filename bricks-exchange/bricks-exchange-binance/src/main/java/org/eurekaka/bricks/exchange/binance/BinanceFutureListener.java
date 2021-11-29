@@ -1,6 +1,8 @@
 package org.eurekaka.bricks.exchange.binance;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectReader;
 import org.eurekaka.bricks.api.WebSocketListener;
 import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.Utils;
@@ -12,20 +14,29 @@ import java.util.concurrent.Executor;
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
 public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus, BinanceFutureApi> {
+    private final ObjectReader reader1;
+    private final ObjectReader reader2;
+    private final ObjectReader reader3;
 
     public BinanceFutureListener(AccountConfig accountConfig,
                                  FutureAccountStatus accountStatus,
                                  BinanceFutureApi api, Executor executor) {
         super(accountConfig, accountStatus, api, executor);
+        reader1 = Utils.mapper.reader().forType(BinanceWebSocketMsgV2.class);
+        reader2 = Utils.mapper.reader().forType(SocketBookTicker.class);
+        reader3 = Utils.mapper.reader().forType(BinanceWebSocketMsg.class);
     }
 
     @Override
     protected void processWholeText(WebSocket webSocket, String message) throws Exception {
-        if ("ping".equals(message)) {
-            webSocket.sendText("pong", true);
-        } else if (message.contains("depthUpdate")) {
+        JsonNode node = Utils.mapper.readTree(message);
+        if (!node.has("e")) {
+            return;
+        }
+        String eventName = node.get("e").asText();
+        if ("depthUpdate".equals(eventName)) {
 //                logger.info("depth update message: {}", message);
-            BinanceWebSocketMsgV2 msg = Utils.mapper.readValue(message, BinanceWebSocketMsgV2.class);
+            BinanceWebSocketMsgV2 msg = reader1.readValue(node);
 //                bidPrices.put(msg.symbol, msg.getLastBidPrice());
 //                sendLastPrice(new ExLastPrice(name, msg.symbol, "bid", msg.getLastBidPrice()));
 //                askPrices.put(msg.symbol, msg.getLastAskPrice());
@@ -39,34 +50,26 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
             }
 
             if (!msg.asks.isEmpty()) {
-                TreeMap<Double, Double> askOrderBook = new TreeMap<>();
+                TreeMap<Double, Double> askOrderBook = new TreeMap<>(Comparator.naturalOrder());
                 for (List<Double> ask : msg.asks) {
                     askOrderBook.put(ask.get(0), ask.get(1));
                 }
                 accountStatus.getAskOrderBooks().put(msg.symbol, askOrderBook);
             }
-        } else if (message.contains("bookTicker")) {
+        } else if ("bookTicker".equals(eventName)) {
             // 使用bookTicker更新 order book 的买一卖一
-            SocketBookTicker msg = Utils.mapper.readValue(message, SocketBookTicker.class);
-            if (accountStatus.getBidOrderBooks().containsKey(msg.symbol)) {
-                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
-                        accountStatus.getBidOrderBooks().get(msg.symbol));
-                boolean removed = map.entrySet().removeIf(entry -> entry.getKey() > msg.bidPrice);
-                if (removed) {
-                    map.put(msg.bidPrice, msg.bidSize);
-                }
+//            logger.info("bookTicker message: {}", message);
+            SocketBookTicker msg = reader2.readValue(node);
+
+            if (msg.bidPrice > 0 && msg.bidSize > 0) {
+                Utils.updateOrderBookTicker(accountStatus.getBidOrderBooks(), msg.symbol, msg.bidPrice, msg.bidSize);
             }
 
-            if (accountStatus.getAskOrderBooks().containsKey(msg.symbol)) {
-                SortedMap<Double, Double> map = Collections.synchronizedSortedMap(
-                        accountStatus.getAskOrderBooks().get(msg.symbol));
-                boolean removed = map.entrySet().removeIf(entry -> entry.getKey() < msg.askPrice);
-                if (removed) {
-                    map.put(msg.askPrice, msg.askSize);
-                }
+            if (msg.askPrice > 0 && msg.askSize > 0) {
+                Utils.updateOrderBookTicker(accountStatus.getAskOrderBooks(), msg.symbol, msg.askPrice, msg.askSize);
             }
         } else {
-            BinanceWebSocketMsg msg = Utils.mapper.readValue(message, BinanceWebSocketMsg.class);
+            BinanceWebSocketMsg msg = reader3.readValue(node);
             if ("kline".equals(msg.eventName)) {
                 String name = accountStatus.getSymbols().get(msg.symbol);
                 if (name != null && msg.kLine != null) {
