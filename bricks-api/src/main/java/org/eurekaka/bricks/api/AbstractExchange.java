@@ -249,7 +249,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         accountStatus.getSymbols().put(symbolPair.symbol, symbolPair.name);
         try {
             if (!accountStatus.getAskOrderBooks().containsKey(symbolPair.symbol)) {
-                accountStatus.getAskOrderBooks().put(symbolPair.symbol, new TreeMap<>());
+                accountStatus.getAskOrderBooks().put(symbolPair.symbol, new TreeMap<>(Comparator.naturalOrder()));
             }
             if (!accountStatus.getBidOrderBooks().containsKey(symbolPair.symbol)) {
                 accountStatus.getBidOrderBooks().put(symbolPair.symbol,
