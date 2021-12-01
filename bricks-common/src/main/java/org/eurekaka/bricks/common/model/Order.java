@@ -46,6 +46,19 @@ public class Order {
         this.price = price;
     }
 
+    public Order(String account, String name, String symbol, OrderSide side, OrderType orderType,
+                 double size, double price, long quantity, String clientOrderId) {
+        this.account = account;
+        this.name = name;
+        this.symbol = symbol;
+        this.side = side;
+        this.orderType = orderType;
+        this.quantity = quantity;
+        this.size = size;
+        this.price = price;
+        this.clientOrderId = clientOrderId;
+    }
+
     public void setId(long id) {
         this.id = id;
     }

@@ -210,8 +210,8 @@ public class GateFutureApi implements FutureExApi {
                     double filled = (result.size - result.left) * contractQuantos.get(result.contract);
                     String clientOrderId = GateUtils.getClientOrderId(result.text);
                     return new CurrentOrder(String.valueOf(result.id), order.getName(), order.getSymbol(),
-                            order.getSide(), order.getOrderType(), order.getSize(), order.getPrice(),
-                            filled, GateUtils.getStatus(result.status, result.finish_as),
+                            accountConfig.getName(), order.getSide(), order.getOrderType(), order.getSize(),
+                            order.getPrice(), filled, GateUtils.getStatus(result.status, result.finish_as),
                             result.finish_time, clientOrderId);
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
@@ -261,7 +261,7 @@ public class GateFutureApi implements FutureExApi {
                             double size = getRealSize(result.contract, result.size);
                             double left = getRealSize(result.contract, result.left);
                             return new CurrentOrder(String.valueOf(result.id), null, symbol,
-                                    GateUtils.getOrderSide(result.size),
+                                    accountConfig.getName(), GateUtils.getOrderSide(result.size),
                                     GateUtils.getOrderType(result.price, result.tif),
                                     size, result.fill_price, size - left,
                                     GateUtils.getStatus(result.status, result.finish_as),
@@ -291,7 +291,7 @@ public class GateFutureApi implements FutureExApi {
                                 double size = getRealSize(result.contract, result.size);
                                 double left = getRealSize(result.contract, result.left);
                                 return new CurrentOrder(String.valueOf(result.id), null, symbol,
-                                        GateUtils.getOrderSide(result.size),
+                                        accountConfig.getName(), GateUtils.getOrderSide(result.size),
                                         GateUtils.getOrderType(result.price, result.tif),
                                         size, result.fill_price, size - left,
                                         GateUtils.getStatus(result.status, result.finish_as),

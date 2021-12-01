@@ -290,7 +290,7 @@ public class Strategy04 implements Strategy {
             } else {
                 // 此时满足挂买单的条件
                 price = price * (1 - bidPriceRate);
-                price = price * (1 - accountActor.getMakerRate(info));
+                price = price * (1 - accountActor.getMakerRate(info.getAccount()));
                 price = Utils.floor(price, info.getPricePrecision());
 
                 double size = Utils.round(orderQuantity * 1.0 / price, info.getSizePrecision());
@@ -321,7 +321,7 @@ public class Strategy04 implements Strategy {
             } else {
                 // 允许挂卖单
                 price = price * (1 + askPriceRate);
-                price = price * (1 + accountActor.getMakerRate(info));
+                price = price * (1 + accountActor.getMakerRate(info.getAccount()));
                 price = Utils.ceil(price, info.getPricePrecision());
 
                 double size = Utils.round(orderQuantity * 1.0 / price, info.getSizePrecision());

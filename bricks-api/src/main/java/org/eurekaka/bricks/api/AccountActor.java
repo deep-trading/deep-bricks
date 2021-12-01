@@ -20,12 +20,12 @@ public class AccountActor {
         this.accountManager = accountManager;
     }
 
-    public double getTakerRate(Info0 info) {
-        return accountManager.getAccount(info.getAccount()).getTakerRate();
+    public double getTakerRate(String account) {
+        return accountManager.getAccount(account).getTakerRate();
     }
 
-    public double getMakerRate(Info0 info) {
-        return accountManager.getAccount(info.getAccount()).getMakerRate();
+    public double getMakerRate(String account) {
+        return accountManager.getAccount(account).getMakerRate();
     }
 
     /**
@@ -36,10 +36,14 @@ public class AccountActor {
     }
 
     public DepthPrice getBidDepthPrice(Info0 info, int depthQty) throws StrategyException {
-        Exchange ex = accountManager.getAccount(info.getAccount());
+        return getBidDepthPrice(info.getAccount(), info.getName(), info.getSymbol(), depthQty);
+    }
+
+    public DepthPrice getBidDepthPrice(String account, String name, String symbol, int depthQty) throws StrategyException {
+        Exchange ex = accountManager.getAccount(account);
         if (ex != null) {
             ExMessage<?> msg = ex.process(new ExAction<>(ExAction.ActionType.GET_BID_DEPTH_PRICE,
-                    new DepthPricePair(info.getName(), info.getSymbol(), depthQty)));
+                    new DepthPricePair(name, symbol, depthQty)));
             if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
                 throw new StrategyException("failed to get bid depth price", (Exception) msg.getData());
             }
@@ -53,10 +57,14 @@ public class AccountActor {
     }
 
     public DepthPrice getAskDepthPrice(Info0 info, int depthQty) throws StrategyException {
-        Exchange ex = accountManager.getAccount(info.getAccount());
+        return getAskDepthPrice(info.getAccount(), info.getName(), info.getSymbol(), depthQty);
+    }
+
+    public DepthPrice getAskDepthPrice(String account, String name, String symbol, int depthQty) throws StrategyException {
+        Exchange ex = accountManager.getAccount(account);
         if (ex != null) {
             ExMessage<?> msg = ex.process(new ExAction<>(ExAction.ActionType.GET_ASK_DEPTH_PRICE,
-                    new DepthPricePair(info.getName(), info.getSymbol(), depthQty)));
+                    new DepthPricePair(name, symbol, depthQty)));
             if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
                 throw new StrategyException("failed to get ask depth price", (Exception) msg.getData());
             }
@@ -160,18 +168,29 @@ public class AccountActor {
     }
 
     public CompletableFuture<Void> asyncCancelOrder(Order order) throws StrategyException {
-        ActionPair pair = new ActionPair(order.getName(), order.getSymbol(), order.getClientOrderId());
-        ExMessage<?> msg = accountManager.getAccount(order.getAccount())
+        return asyncCancelOrder(order.getAccount(), order.getName(), order.getSymbol(), order.getClientOrderId());
+    }
+
+    public CompletableFuture<Void> asyncCancelOrder(String account, String name,
+                                                    String symbol, String clientOrderId) throws StrategyException {
+        ActionPair pair = new ActionPair(name, symbol, clientOrderId);
+        ExMessage<?> msg = accountManager.getAccount(account)
                 .process(new ExAction<>(ExAction.ActionType.CANCEL_ORDER_V2, pair));
         if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
-            throw new StrategyException("failed to async cancel order: " + order, (Exception) msg.getData());
+            throw new StrategyException("failed to async cancel order, account " + account +
+                    ", name: " + name + ", client order id: " + clientOrderId, (Exception) msg.getData());
         }
         return (CompletableFuture<Void>) msg.getData();
     }
 
     public CompletableFuture<CurrentOrder> asyncGetOrder(Info0 info, String clientOrderId) throws StrategyException {
-        ActionPair pair = new ActionPair(info.getName(), info.getSymbol(), clientOrderId);
-        ExMessage<?> msg = accountManager.getAccount(info.getAccount())
+        return asyncGetOrder(info.getAccount(), info.getName(), info.getSymbol(), clientOrderId);
+    }
+
+    public CompletableFuture<CurrentOrder> asyncGetOrder(String account, String name,
+                                                         String symbol, String clientOrderId) throws StrategyException {
+        ActionPair pair = new ActionPair(name, symbol, clientOrderId);
+        ExMessage<?> msg = accountManager.getAccount(account)
                 .process(new ExAction<>(ExAction.ActionType.GET_ORDER_V2, pair));
         if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
             throw new StrategyException("failed to async get order: " + pair, (Exception) msg.getData());

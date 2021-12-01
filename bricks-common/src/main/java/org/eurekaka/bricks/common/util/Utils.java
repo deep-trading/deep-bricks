@@ -192,6 +192,9 @@ public class Utils {
     public static <K, T> void updateOrderBookTicker(Map<String, TreeMap<K, T>> source, String symbol, K key, T value) {
         if (source.containsKey(symbol)) {
             TreeMap<K, T> map = source.get(symbol);
+            if (map.isEmpty()) {
+                return;
+            }
             if (map.comparator().compare(map.firstKey(), key) > 0) {
                 return;
             }

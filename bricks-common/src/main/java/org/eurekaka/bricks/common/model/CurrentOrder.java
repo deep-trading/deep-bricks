@@ -28,6 +28,8 @@ public class CurrentOrder {
     @JsonProperty("client_order_id")
     private String clientOrderId;
 
+    private String account;
+
     public CurrentOrder(String id, String name, String symbol, OrderSide side, OrderType type,
                         double size, double price, double filledSize) {
         this.id = id;
@@ -42,9 +44,9 @@ public class CurrentOrder {
         this.time = System.currentTimeMillis();
     }
 
-    public CurrentOrder(String id, String name, String symbol, OrderSide side,
-                        OrderType type, double size, double price, double filledSize,
-                        OrderStatus status, long time, String clientOrderId) {
+    public CurrentOrder(String id, String name, String symbol, String account,
+                        OrderSide side, OrderType type, double size, double price,
+                        double filledSize, OrderStatus status, long time, String clientOrderId) {
         this.id = id;
         this.symbol = symbol;
         this.side = side;
@@ -56,6 +58,7 @@ public class CurrentOrder {
         this.status = status;
         this.time = time;
         this.clientOrderId = clientOrderId;
+        this.account = account;
     }
 
     public String getId() {
@@ -110,6 +113,10 @@ public class CurrentOrder {
         return clientOrderId;
     }
 
+    public String getAccount() {
+        return account;
+    }
+
     @Override
     public String toString() {
         return "CurrentOrder{" +
@@ -121,6 +128,7 @@ public class CurrentOrder {
                 ", price=" + price +
                 ", filledSize=" + filledSize +
                 ", name='" + name + '\'' +
+                ", account='" + account + '\'' +
                 ", time=" + time +
                 ", status=" + status +
                 ", clientOrderId='" + clientOrderId + '\'' +
@@ -138,6 +146,7 @@ public class CurrentOrder {
                 time == that.time && id.equals(that.id) &&
                 symbol.equals(that.symbol) && side == that.side &&
                 type == that.type && Objects.equals(name, that.name) &&
+                Objects.equals(account, that.account) &&
                 status == that.status &&
                 Objects.equals(clientOrderId, that.clientOrderId);
     }
@@ -145,6 +154,6 @@ public class CurrentOrder {
     @Override
     public int hashCode() {
         return Objects.hash(id, symbol, side, type, size, price,
-                filledSize, name, time, status, clientOrderId);
+                filledSize, name, time, status, clientOrderId, account);
     }
 }

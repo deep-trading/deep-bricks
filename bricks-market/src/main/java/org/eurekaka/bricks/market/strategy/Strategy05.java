@@ -290,8 +290,8 @@ public class Strategy05 implements Strategy {
             double price = depthPrice.price;
 
             price = price * (1 - bidPriceRate);
-            price = price * (1 - accountActor.getTakerRate(targetInfo));
-            price = price * (1 - accountActor.getMakerRate(sourceInfo));
+            price = price * (1 - accountActor.getTakerRate(targetInfo.getAccount()));
+            price = price * (1 - accountActor.getMakerRate(sourceInfo.getAccount()));
             price = Utils.floor(price, sourceInfo.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sourceInfo.getSizePrecision());
@@ -306,8 +306,8 @@ public class Strategy05 implements Strategy {
 
             // 允许挂卖单
             price = price * (1 + askPriceRate);
-            price = price * (1 + accountActor.getMakerRate(sourceInfo));
-            price = price * (1 + accountActor.getTakerRate(targetInfo));
+            price = price * (1 + accountActor.getMakerRate(sourceInfo.getAccount()));
+            price = price * (1 + accountActor.getTakerRate(targetInfo.getAccount()));
             price = Utils.ceil(price, sourceInfo.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sourceInfo.getSizePrecision());

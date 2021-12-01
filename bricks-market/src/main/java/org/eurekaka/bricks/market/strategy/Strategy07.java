@@ -8,9 +8,11 @@ import org.eurekaka.bricks.common.util.Utils;
 import org.eurekaka.bricks.server.BrickContext;
 import org.eurekaka.bricks.server.model.AsyncStateOrder;
 import org.eurekaka.bricks.server.model.OrderState;
+import org.eurekaka.bricks.server.strategy.StopOrderTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +30,8 @@ public class Strategy07 implements Strategy {
     private final StrategyConfig strategyConfig;
 
     private final AccountActor accountActor;
+
+    private final StopOrderTracker orderTracker;
 
     private Info0 info1;
     private Info0 info2;
@@ -57,11 +61,15 @@ public class Strategy07 implements Strategy {
     private int orderIndex2;
     private final Map<String, Double> filledOrderSize;
 
+    private boolean isDirect;
+
     public Strategy07(BrickContext brickContext, StrategyConfig strategyConfig) {
         this.brickContext = brickContext;
         this.strategyConfig = strategyConfig;
 
         this.accountActor = new AccountActor(brickContext.getAccountManager());
+
+        orderTracker = new StopOrderTracker(strategyConfig, accountActor);
 
         this.orderIndex1 = 0;
         this.orderIndex2 = 0;
@@ -86,13 +94,36 @@ public class Strategy07 implements Strategy {
         // 最小订单金额
         minOrderQuantity = strategyConfig.getInt("min_order_quantity", 13);
 
+        isDirect = strategyConfig.getInt("order_alive_time", 0) == 0 &&
+                strategyConfig.getDouble("order_risk_rate", 0D) == 0;
+
         posQuantity1 = accountActor.getPosition(info1).getQuantity();
         posQuantity2 = accountActor.getPosition(info2).getQuantity();
 
         timeCounter = System.currentTimeMillis();
 
-        accountActor.cancelAllOrders(info1);
-        accountActor.cancelAllOrders(info2);
+        // 初始化订单跟踪器
+        List<CurrentOrder> trackingOrders = new ArrayList<>();
+        for (CurrentOrder currentOrder : accountActor.getCurrentOrders(info1)) {
+            if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
+                trackingOrders.add(currentOrder);
+            } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
+                // 取消该订单
+                accountActor.asyncCancelOrder(currentOrder.getAccount(),
+                        currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+            }
+        }
+        for (CurrentOrder currentOrder : accountActor.getCurrentOrders(info2)) {
+            if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
+                trackingOrders.add(currentOrder);
+            } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
+                // 取消该订单
+                accountActor.asyncCancelOrder(currentOrder.getAccount(),
+                        currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+            }
+        }
+
+        orderTracker.init(trackingOrders);
     }
 
     @Override
@@ -170,10 +201,10 @@ public class Strategy07 implements Strategy {
             if (orderNotify.getFilledSize() > 0) {
                 logger.info("{}: received order notify: {}", System.currentTimeMillis() - timeCounter, orderNotify);
                 // 确认成交订单来自于当前四个挂单
-                AsyncStateOrder order = null;
+                Order order = null;
                 if (bidOrder1 != null && orderNotify.getClientOrderId().equals(bidOrder1.getClientOrderId()) ||
                         askOrder1 != null && orderNotify.getClientOrderId().equals(askOrder1.getClientOrderId())) {
-                    order = generateMarketHedgingOrder(orderNotify, info2);
+                    order = generateMarketHedgingOrder(orderNotify, info1, info2);
                     if (order != null && order.getQuantity() > 0) {
                         long base = posQuantity1;
                         if (orderNotify.getSide().equals(OrderSide.BUY)) {
@@ -184,7 +215,7 @@ public class Strategy07 implements Strategy {
                     }
                 } else if (bidOrder2 != null && orderNotify.getClientOrderId().equals(bidOrder2.getClientOrderId()) ||
                         askOrder2 != null && orderNotify.getClientOrderId().equals(askOrder2.getClientOrderId())) {
-                    order = generateMarketHedgingOrder(orderNotify, info1);
+                    order = generateMarketHedgingOrder(orderNotify, info2, info1);
                     if (order != null && order.getQuantity() > 0) {
                         long base = posQuantity2;
                         if (orderNotify.getSide().equals(OrderSide.BUY)) {
@@ -195,19 +226,15 @@ public class Strategy07 implements Strategy {
                     }
                 }
                 if (order != null) {
-                    // 直接市价单对冲
-                    AsyncStateOrder finalOrder = order;
-                    accountActor.asyncMakeOrder(order).thenAccept(o -> {
-                        finalOrder.setState(OrderState.SUBMITTED);
+                    orderTracker.submit(order).thenAccept(o -> {
                         logger.info("{}: made trade hedging order: {}", System.currentTimeMillis() - timeCounter, o);
                     });
-                    // todo:: 支持IOC or GTC 对冲
                 }
             }
         }
     }
 
-    private AsyncStateOrder generateMarketHedgingOrder(OrderNotification orderNotify, Info0 other) {
+    private Order generateMarketHedgingOrder(OrderNotification orderNotify, Info0 info, Info0 other) {
         double sizeDiff = orderNotify.getFilledSize() -
                 filledOrderSize.getOrDefault(orderNotify.getClientOrderId(), 0D);
         if (sizeDiff > 0) {
@@ -228,9 +255,29 @@ public class Strategy07 implements Strategy {
 
             String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex2++;
             double price = orderNotify.getPrice();
+            if (OrderSide.BUY.equals(orderNotify.getSide())) {
+                // 高价卖
+                price = price * (1 + accountActor.getMakerRate(orderNotify.getAccount()));
+                price = price * (1 + accountActor.getTakerRate(other.getAccount()));
+                price = price * (1 + strategyConfig.getDouble("ask_price_rate", 0.0002));
 
-            return new AsyncStateOrder(other.getAccount(), other.getName(), other.getSymbol(),
-                    side, OrderType.MARKET, size, price, quantity, clientOrderId, OrderState.SUBMITTING);
+                price = Utils.ceil(price, info.getPricePrecision());
+            } else {
+                price = price * (1 - accountActor.getMakerRate(orderNotify.getAccount()));
+                price = price * (1 - accountActor.getTakerRate(other.getAccount()));
+                price = price * (1 - strategyConfig.getDouble("bid_price_rate", 0.0002));
+
+                price = Utils.floor(price, info.getPricePrecision());
+            }
+
+
+            OrderType orderType = OrderType.LIMIT_GTC;
+            if (isDirect) {
+                orderType = OrderType.MARKET;
+            }
+
+            return new Order(other.getAccount(), other.getName(), other.getSymbol(),
+                    side, orderType, size, price, quantity, clientOrderId);
         }
 
         return null;
@@ -333,8 +380,8 @@ public class Strategy07 implements Strategy {
             double price = depthPrice.price;
 
             price = price * (1 - bidPriceRate);
-            price = price * (1 - accountActor.getTakerRate(other));
-            price = price * (1 - accountActor.getMakerRate(info));
+            price = price * (1 - accountActor.getTakerRate(other.getAccount()));
+            price = price * (1 - accountActor.getMakerRate(info.getAccount()));
             price = Utils.floor(price, info.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
@@ -349,8 +396,8 @@ public class Strategy07 implements Strategy {
 
             // 允许挂卖单
             price = price * (1 + askPriceRate);
-            price = price * (1 + accountActor.getTakerRate(other));
-            price = price * (1 + accountActor.getMakerRate(info));
+            price = price * (1 + accountActor.getTakerRate(other.getAccount()));
+            price = price * (1 + accountActor.getMakerRate(info.getAccount()));
             price = Utils.ceil(price, info.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);

@@ -250,7 +250,7 @@ public class BinanceFutureApi implements FutureExApi {
                         try {
                             BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
                             return new CurrentOrder(result.orderId, order.getName(), order.getSymbol(),
-                                    order.getSide(), order.getOrderType(),
+                                    accountConfig.getName(), order.getSide(), order.getOrderType(),
                                     order.getSize(), result.price, result.executedQty,
                                     BinanceUtils.getStatus(result.status), result.updateTime, result.clientOrderId);
                         } catch (Exception e) {
@@ -307,7 +307,7 @@ public class BinanceFutureApi implements FutureExApi {
                             List<CurrentOrder> orders = new ArrayList<>();
                             for (BinanceOrder order : result) {
                                 orders.add(new CurrentOrder(order.orderId, null, order.symbol,
-                                        OrderSide.valueOf(order.side),
+                                        accountConfig.getName(), OrderSide.valueOf(order.side),
                                         BinanceUtils.getOrderType(order.type, order.timeInForce),
                                         order.origQty, order.price, order.executedQty,
                                         BinanceUtils.getStatus(order.status), order.updateTime, order.clientOrderId));
@@ -340,7 +340,7 @@ public class BinanceFutureApi implements FutureExApi {
                         return null;
                     }
                     return new CurrentOrder(result.orderId, null, result.symbol,
-                            OrderSide.valueOf(result.side),
+                            accountConfig.getName(), OrderSide.valueOf(result.side),
                             BinanceUtils.getOrderType(result.type, result.timeInForce),
                             result.origQty, result.price, result.executedQty,
                             BinanceUtils.getStatus(result.status), result.updateTime, result.clientOrderId);

@@ -295,8 +295,8 @@ public class Strategy06 implements Strategy {
             double price = depthPrice.price;
 
             price = price * (1 - bidPriceRate);
-            price = price * (1 - accountActor.getTakerRate(other));
-            price = price * (1 - accountActor.getMakerRate(info));
+            price = price * (1 - accountActor.getTakerRate(other.getAccount()));
+            price = price * (1 - accountActor.getMakerRate(info.getAccount()));
             price = Utils.floor(price, info.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
@@ -311,8 +311,8 @@ public class Strategy06 implements Strategy {
 
             // 允许挂卖单
             price = price * (1 + askPriceRate);
-            price = price * (1 + accountActor.getTakerRate(other));
-            price = price * (1 + accountActor.getMakerRate(info));
+            price = price * (1 + accountActor.getTakerRate(other.getAccount()));
+            price = price * (1 + accountActor.getMakerRate(info.getAccount()));
             price = Utils.ceil(price, info.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
@@ -398,10 +398,10 @@ public class Strategy06 implements Strategy {
         if (OrderSide.BUY.equals(side)) {
             // 下买单，则比较哪个卖单价格更便宜
             DepthPrice depthPrice1 = accountActor.getAskDepthPrice(info1);
-            double price1 = depthPrice1.price * (1 + accountActor.getTakerRate(info1));
+            double price1 = depthPrice1.price * (1 + accountActor.getTakerRate(info1.getAccount()));
 
             DepthPrice depthPrice2 = accountActor.getAskDepthPrice(info2);
-            double price2 = depthPrice2.price * (1 + accountActor.getTakerRate(info2));
+            double price2 = depthPrice2.price * (1 + accountActor.getTakerRate(info2.getAccount()));
 
             // 此处不需要ceil
             if (price1 < price2) {
@@ -416,10 +416,10 @@ public class Strategy06 implements Strategy {
         } else {
             // 生成卖单，找最高买价
             DepthPrice depthPrice1 = accountActor.getBidDepthPrice(info1);
-            double price1 = depthPrice1.price * (1 - accountActor.getTakerRate(info1));
+            double price1 = depthPrice1.price * (1 - accountActor.getTakerRate(info1.getAccount()));
 
             DepthPrice depthPrice2 = accountActor.getBidDepthPrice(info2);
-            double price2 = depthPrice2.price * (1 - accountActor.getTakerRate(info2));
+            double price2 = depthPrice2.price * (1 - accountActor.getTakerRate(info2.getAccount()));
 
             if (price1 > price2) {
                 size = Utils.round(size, sizePrecision);
