@@ -207,11 +207,13 @@ public class GateFutureApi implements FutureExApi {
                         throw new CompletionException(
                                 new ExApiException("failed to make order: " + response.body()));
                     }
-                    double filled = (result.size - result.left) * contractQuantos.get(result.contract);
+                    double filled = Math.abs(result.size - result.left);
+                    filled = filled * contractQuantos.get(result.contract);
+
                     String clientOrderId = GateUtils.getClientOrderId(result.text);
                     return new CurrentOrder(String.valueOf(result.id), order.getName(), order.getSymbol(),
                             accountConfig.getName(), order.getSide(), order.getOrderType(), order.getSize(),
-                            order.getPrice(), filled, GateUtils.getStatus(result.status, result.finish_as),
+                            order.getPrice(), filled, GateUtils.getStatus(result.status, result.finish_as, filled),
                             result.finish_time, clientOrderId);
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
@@ -260,11 +262,12 @@ public class GateFutureApi implements FutureExApi {
 
                             double size = getRealSize(result.contract, result.size);
                             double left = getRealSize(result.contract, result.left);
+                            double filled = size - left;
                             return new CurrentOrder(String.valueOf(result.id), null, symbol,
                                     accountConfig.getName(), GateUtils.getOrderSide(result.size),
                                     GateUtils.getOrderType(result.price, result.tif),
-                                    size, result.fill_price, size - left,
-                                    GateUtils.getStatus(result.status, result.finish_as),
+                                    size, result.fill_price, filled,
+                                    GateUtils.getStatus(result.status, result.finish_as, filled),
                                     result.finish_time, result.text.substring(2));
                         } catch (JsonProcessingException e) {
                             throw new CompletionException("failed to parse response body", e);
@@ -290,11 +293,12 @@ public class GateFutureApi implements FutureExApi {
                             return orders.stream().map(result -> {
                                 double size = getRealSize(result.contract, result.size);
                                 double left = getRealSize(result.contract, result.left);
+                                double filled = size - left;
                                 return new CurrentOrder(String.valueOf(result.id), null, symbol,
                                         accountConfig.getName(), GateUtils.getOrderSide(result.size),
                                         GateUtils.getOrderType(result.price, result.tif),
-                                        size, result.fill_price, size - left,
-                                        GateUtils.getStatus(result.status, result.finish_as),
+                                        size, result.fill_price, filled,
+                                        GateUtils.getStatus(result.status, result.finish_as, filled),
                                         result.finish_time, result.text.substring(2));
                             }).collect(Collectors.toList());
                         } catch (JsonProcessingException e) {

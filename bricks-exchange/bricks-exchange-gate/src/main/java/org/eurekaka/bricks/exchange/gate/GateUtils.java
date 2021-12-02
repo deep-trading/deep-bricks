@@ -21,9 +21,9 @@ public class GateUtils {
         return OrderType.NONE;
     }
 
-    public static OrderStatus getStatus(String status, String finish_as) {
+    public static OrderStatus getStatus(String status, String finish_as, double filled) {
         if ("open".equals(status)) {
-            return OrderStatus.NEW;
+            return filled > 0 ? OrderStatus.PART_FILLED : OrderStatus.NEW;
         } else if ("finished".equals(status)) {
             if ("filled".equals(finish_as)) {
                 return OrderStatus.FILLED;

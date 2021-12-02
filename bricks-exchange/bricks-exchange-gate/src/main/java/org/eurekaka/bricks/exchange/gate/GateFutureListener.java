@@ -135,20 +135,21 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 String name = accountStatus.getSymbols().get(result.contract);
                 if (name != null) {
                     OrderSide side = OrderSide.BUY;
-                    double size = result.size;
                     if (result.size < 0) {
                         side = OrderSide.SELL;
-                        size = -size;
                     }
-                    size = api.getSize(result.contract, size);
+
                     OrderType type = GateUtils.getOrderType(result.price, result.tif);
-                    double leftSize = api.getSize(result.contract, result.left);
+                    double size = Math.abs(api.getSize(result.contract, result.size));
+                    double leftSize = Math.abs(api.getSize(result.contract, result.left));
+                    double filled = size - leftSize;
+
                     String clientOrderId = GateUtils.getClientOrderId(result.text);
                     OrderNotification notification = new OrderNotification(result.id, name,
                             result.contract, accountConfig.getName(), side, type,
-                            size, result.price, size - Math.abs(leftSize),
+                            size, result.price, filled,
                             result.fill_price, clientOrderId,
-                            GateUtils.getStatus(result.status, result.finish_as),
+                            GateUtils.getStatus(result.status, result.finish_as, filled),
                             result.finish_time_ms);
                     accountStatus.getNotificationQueue().add(notification);
                 }
