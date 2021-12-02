@@ -62,6 +62,7 @@ public class Strategy07 implements Strategy {
     private final Map<String, Double> filledOrderSize;
 
     private boolean isDirect;
+    private double orderProfitRate;
 
     public Strategy07(BrickContext brickContext, StrategyConfig strategyConfig) {
         this.brickContext = brickContext;
@@ -96,6 +97,8 @@ public class Strategy07 implements Strategy {
 
         isDirect = strategyConfig.getInt("order_alive_time", 0) == 0 &&
                 strategyConfig.getDouble("order_risk_rate", 0D) == 0;
+
+        orderProfitRate = strategyConfig.getDouble("order_profit_rate", 0.0003);
 
         posQuantity1 = accountActor.getPosition(info1).getQuantity();
         posQuantity2 = accountActor.getPosition(info2).getQuantity();
@@ -165,6 +168,9 @@ public class Strategy07 implements Strategy {
                 (askOrder1 == null || !e.getKey().equals(askOrder1.getClientOrderId())) &&
                 (bidOrder2 == null || !e.getKey().equals(bidOrder2.getClientOrderId())) &&
                 (askOrder2 == null || !e.getKey().equals(askOrder2.getClientOrderId())));
+
+        // 检查当前的对冲订单
+        orderTracker.track();
 
         boolean checked1 = checkOrderInterval(1);
         AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY,
@@ -253,19 +259,20 @@ public class Strategy07 implements Strategy {
             }
             double size = Utils.round(sizeDiff, sizePrecision);
 
-            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex2++;
+            orderIndex2 = (orderIndex2 + 1) % 1000000;
+            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex2;
             double price = orderNotify.getPrice();
             if (OrderSide.BUY.equals(orderNotify.getSide())) {
                 // 高价卖
                 price = price * (1 + accountActor.getMakerRate(orderNotify.getAccount()));
                 price = price * (1 + accountActor.getTakerRate(other.getAccount()));
-                price = price * (1 + strategyConfig.getDouble("ask_price_rate", 0.0002));
+                price = price * (1 + orderProfitRate);
 
                 price = Utils.ceil(price, info.getPricePrecision());
             } else {
                 price = price * (1 - accountActor.getMakerRate(orderNotify.getAccount()));
                 price = price * (1 - accountActor.getTakerRate(other.getAccount()));
-                price = price * (1 - strategyConfig.getDouble("bid_price_rate", 0.0002));
+                price = price * (1 - orderProfitRate);
 
                 price = Utils.floor(price, info.getPricePrecision());
             }
@@ -332,7 +339,8 @@ public class Strategy07 implements Strategy {
         // 若是可以下单
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
             if (checked) {
-                String clientOrderId = info.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex1++;
+                orderIndex1 = (orderIndex1 + 1) % 1000000;
+                String clientOrderId = info.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
