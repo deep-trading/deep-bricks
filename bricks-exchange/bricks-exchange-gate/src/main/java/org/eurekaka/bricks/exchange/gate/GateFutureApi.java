@@ -214,7 +214,7 @@ public class GateFutureApi implements FutureExApi {
                     return new CurrentOrder(String.valueOf(result.id), order.getName(), order.getSymbol(),
                             accountConfig.getName(), order.getSide(), order.getOrderType(), order.getSize(),
                             order.getPrice(), filled, GateUtils.getStatus(result.status, result.finish_as, filled),
-                            result.finish_time, clientOrderId);
+                            result.create_time * 1000, clientOrderId);
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
                 }
@@ -266,9 +266,9 @@ public class GateFutureApi implements FutureExApi {
                             return new CurrentOrder(String.valueOf(result.id), null, symbol,
                                     accountConfig.getName(), GateUtils.getOrderSide(result.size),
                                     GateUtils.getOrderType(result.price, result.tif),
-                                    size, result.fill_price, filled,
+                                    size, result.price, filled,
                                     GateUtils.getStatus(result.status, result.finish_as, filled),
-                                    result.finish_time, result.text.substring(2));
+                                    result.create_time * 1000, result.text.substring(2));
                         } catch (JsonProcessingException e) {
                             throw new CompletionException("failed to parse response body", e);
                         }
@@ -297,9 +297,9 @@ public class GateFutureApi implements FutureExApi {
                                 return new CurrentOrder(String.valueOf(result.id), null, symbol,
                                         accountConfig.getName(), GateUtils.getOrderSide(result.size),
                                         GateUtils.getOrderType(result.price, result.tif),
-                                        size, result.fill_price, filled,
+                                        size, result.price, filled,
                                         GateUtils.getStatus(result.status, result.finish_as, filled),
-                                        result.finish_time, result.text.substring(2));
+                                        result.create_time * 1000, result.text.substring(2));
                             }).collect(Collectors.toList());
                         } catch (JsonProcessingException e) {
                             throw new CompletionException("failed to parse response body", e);

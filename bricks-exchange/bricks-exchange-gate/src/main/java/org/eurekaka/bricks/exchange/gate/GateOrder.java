@@ -14,6 +14,7 @@ class GateOrder {
     public String status;
     public String finish_as;
     public long finish_time;
+    public long create_time;
 
     public GateOrder() {
     }

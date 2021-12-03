@@ -61,7 +61,7 @@ public class GateFutureApiTest {
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.LIMIT_GTX, 2, 4.48, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
-//                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 4.56, 9));
+//                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 3.9, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.LIMIT_IOC, 2, 4.48, 9));
 
