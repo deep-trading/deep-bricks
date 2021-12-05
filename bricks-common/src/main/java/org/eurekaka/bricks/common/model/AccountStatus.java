@@ -1,10 +1,7 @@
 package org.eurekaka.bricks.common.model;
 
 
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -35,6 +32,9 @@ public class AccountStatus {
     // 小堆，first entry key 价格最低
     private final Map<String, TreeMap<Double, Double>> askOrderBooks;
 
+    // websocket 接收的order book value，用于缓存最近一段时间的订单簿数据
+    private final Map<String, LinkedList<OrderBookValue>> orderBookValues;
+
     // mark usdt，转换统一计价单位，平台交易对可能以USDT计价，也可能以BUSD计价
     private double markUsdt;
 
@@ -51,6 +51,7 @@ public class AccountStatus {
         this.markUsdt = 1D;
         this.balances = new ConcurrentHashMap<>();
         this.klineValues = new ConcurrentHashMap<>();
+        this.orderBookValues = new ConcurrentHashMap<>();
     }
 
     public Map<String, String> getSymbols() {
@@ -67,6 +68,10 @@ public class AccountStatus {
 
     public Map<String, TreeMap<Double, Double>> getAskOrderBooks() {
         return askOrderBooks;
+    }
+
+    public Map<String, LinkedList<OrderBookValue>> getOrderBookValues() {
+        return orderBookValues;
     }
 
     public Queue<Notification> getNotificationQueue() {
@@ -101,4 +106,63 @@ public class AccountStatus {
     public Map<String, List<KLineValue>> getKlineValues() {
         return klineValues;
     }
+
+    public void updateOrderBookValue(String symbol, OrderBookValue orderBookValue) {
+        // 更新原有的order book
+        if (orderBookValues.containsKey(symbol)) {
+            // 缓存order book value
+            synchronized (orderBookValues.get(symbol)) {
+                LinkedList<OrderBookValue> bookValues = orderBookValues.get(symbol);
+                if (bookValues.isEmpty() || orderBookValue.lastUpdateId >= bookValues.getLast().lastUpdateId) {
+                    bookValues.add(orderBookValue);
+                }
+            }
+
+            synchronized (bidOrderBooks.get(symbol)) {
+                updateOrderBookValuePair(bidOrderBooks.get(symbol), orderBookValue.bids);
+            }
+            synchronized (askOrderBooks.get(symbol)) {
+                updateOrderBookValuePair(askOrderBooks.get(symbol), orderBookValue.asks);
+            }
+        }
+    }
+
+    // not thread safe
+    public void buildOrderBookValue(String symbol, OrderBookValue orderBookValue) {
+        // 根据snapshot, 更新tree map
+        TreeMap<Double, Double> bidTreeMap = new TreeMap<>(Comparator.reverseOrder());
+        TreeMap<Double, Double> askTreeMap = new TreeMap<>(Comparator.naturalOrder());
+
+        updateOrderBookValuePair(bidTreeMap, orderBookValue.bids);
+        updateOrderBookValuePair(askTreeMap, orderBookValue.asks);
+
+        // 检查当前status内的order book values缓存，检查可用
+        List<OrderBookValue> bookValues = this.orderBookValues.get(symbol);
+        if (bookValues != null) {
+            boolean found = false;
+            for (OrderBookValue bookValue : bookValues) {
+                if (bookValue.firstUpdateId <= orderBookValue.lastUpdateId) {
+                    found = true;
+                }
+                if (found) {
+                    updateOrderBookValuePair(bidTreeMap, bookValue.bids);
+                    updateOrderBookValuePair(askTreeMap, bookValue.asks);
+                }
+            }
+        }
+
+        bidOrderBooks.put(symbol, bidTreeMap);
+        askOrderBooks.put(symbol, askTreeMap);
+    }
+
+    private void updateOrderBookValuePair(Map<Double, Double> map, List<OrderBookValue.PriceSizePair> pairs) {
+        for (OrderBookValue.PriceSizePair pair : pairs) {
+            if (pair.size == 0) {
+                map.remove(pair.price);
+            } else {
+                map.put(pair.price, pair.size);
+            }
+        }
+    }
+
 }

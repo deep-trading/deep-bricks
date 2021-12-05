@@ -17,6 +17,7 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
     private final ObjectReader reader1;
     private final ObjectReader reader2;
     private final ObjectReader reader3;
+//    private long start;
 
     public BinanceFutureListener(AccountConfig accountConfig,
                                  FutureAccountStatus accountStatus,
@@ -25,6 +26,7 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         reader1 = Utils.mapper.reader().forType(BinanceWebSocketMsgV2.class);
         reader2 = Utils.mapper.reader().forType(SocketBookTicker.class);
         reader3 = Utils.mapper.reader().forType(BinanceWebSocketMsg.class);
+//        start = System.currentTimeMillis();
     }
 
     @Override
@@ -35,27 +37,38 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         }
         String eventName = node.get("e").asText();
         if ("depthUpdate".equals(eventName)) {
-//                logger.info("depth update message: {}", message);
             BinanceWebSocketMsgV2 msg = reader1.readValue(node);
 //                bidPrices.put(msg.symbol, msg.getLastBidPrice());
 //                sendLastPrice(new ExLastPrice(name, msg.symbol, "bid", msg.getLastBidPrice()));
 //                askPrices.put(msg.symbol, msg.getLastAskPrice());
 //                sendLastPrice(new ExLastPrice(name, msg.symbol, "ask", msg.getLastAskPrice()));
-            if (!msg.bids.isEmpty()) {
-                TreeMap<Double, Double> bidOrderBook = new TreeMap<>(Comparator.reverseOrder());
-                for (List<Double> bid : msg.bids) {
-                    bidOrderBook.put(bid.get(0), bid.get(1));
-                }
-                accountStatus.getBidOrderBooks().put(msg.symbol, bidOrderBook);
-            }
+//            if (!msg.bids.isEmpty()) {
+//                TreeMap<Double, Double> bidOrderBook = new TreeMap<>(Comparator.reverseOrder());
+//                for (List<Double> bid : msg.bids) {
+//                    bidOrderBook.put(bid.get(0), bid.get(1));
+//                }
+//                accountStatus.getBidOrderBooks().put(msg.symbol, bidOrderBook);
+//            }
 
-            if (!msg.asks.isEmpty()) {
-                TreeMap<Double, Double> askOrderBook = new TreeMap<>(Comparator.naturalOrder());
-                for (List<Double> ask : msg.asks) {
-                    askOrderBook.put(ask.get(0), ask.get(1));
-                }
-                accountStatus.getAskOrderBooks().put(msg.symbol, askOrderBook);
-            }
+//            if (!msg.asks.isEmpty()) {
+//                TreeMap<Double, Double> askOrderBook = new TreeMap<>(Comparator.naturalOrder());
+//                for (List<Double> ask : msg.asks) {
+//                    askOrderBook.put(ask.get(0), ask.get(1));
+//                }
+//                accountStatus.getAskOrderBooks().put(msg.symbol, askOrderBook);
+//            }
+            OrderBookValue orderBookValue = new OrderBookValue(msg.lastUpdateId, msg.firstUpdateId,
+                    OrderBookValue.parsePairs(msg.bids), OrderBookValue.parsePairs(msg.asks));
+            accountStatus.updateOrderBookValue(msg.symbol, orderBookValue);
+//            long timer = System.currentTimeMillis() - start;
+//            if (timer > 10000) {
+//                start = start + timer;
+//                logger.info("{}: depth update message: {}", timer, message);
+//                logger.info("order book value: {}", orderBookValue);
+//                logger.info("order book values size: {}", accountStatus.getOrderBookValues().get(msg.symbol).size());
+//                logger.info("order book bids: {}", accountStatus.getBidOrderBooks().get(msg.symbol));
+//                logger.info("order book asks: {}", accountStatus.getAskOrderBooks().get(msg.symbol));
+//            }
         } else if ("bookTicker".equals(eventName)) {
             // 使用bookTicker更新 order book 的买一卖一
 //            logger.info("bookTicker message: {}", message);
@@ -177,6 +190,11 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         public List<List<Double>> asks;
         @JsonProperty("s")
         public String symbol;
+        @JsonProperty("U")
+        public long firstUpdateId;
+        @JsonProperty("u")
+        public long lastUpdateId;
+
 
         public BinanceWebSocketMsgV2() {
         }

@@ -56,6 +56,8 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
     protected boolean enableKlineSub;
 
+    protected int orderBookLimit;
+
     public AbstractExchange(AccountConfig accountConfig, A accountStatus) {
         this.accountConfig = accountConfig;
         this.accountStatus = accountStatus;
@@ -85,6 +87,8 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 "enable_kline", "false"));
         this.klineInterval = KLineInterval.getKLineInterval(accountConfig
                 .getProperty("kline_interval", "1m"));
+
+        this.orderBookLimit = Integer.parseInt(accountConfig.getProperty("order_book_limit", "500"));
     }
 
     @Override
@@ -265,9 +269,13 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 List<KLineValue> kLineValues = api.getKLineValues(pair);
                 accountStatus.getKlineValues().put(symbolPair.symbol, kLineValues);
             }
+            if (!accountStatus.getOrderBookValues().containsKey(symbolPair.symbol)) {
+                accountStatus.getOrderBookValues().put(symbolPair.symbol, new LinkedList<>());
+            }
 
             if (accountConfig.getWebsocket() != null) {
                 sendSub(symbolPair.symbol);
+                buildOrderBook(symbolPair.symbol);
             }
             return new ExMessage<>(ExMessage.ExMsgType.RIGHT);
         } catch (Throwable t) {
@@ -294,6 +302,12 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
 
     protected void sendUnsub(String symbol) throws ExApiException {}
+
+    protected void buildOrderBook(String symbol) throws ExApiException {
+        api.asyncGetOrderBook(symbol, orderBookLimit).thenAccept(orderBookValue -> {
+            accountStatus.buildOrderBookValue(symbol, orderBookValue);
+        });
+    }
 
     /**
      * 注册queue，便于主动向外部推送消息
@@ -560,8 +574,18 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                     // initial the symbols subscription
                     for (String symbol : accountStatus.getSymbols().keySet()) {
                         sendSub(symbol);
+                        buildOrderBook(symbol);
                     }
                     logger.info("reconnect to exchange account: {}", getName());
+                }
+                // 清理多余的order book value
+                for (String key : accountStatus.getOrderBookValues().keySet()) {
+                    synchronized (accountStatus.getOrderBookValues().get(key)) {
+                        LinkedList<OrderBookValue> orderBookValues = accountStatus.getOrderBookValues().get(key);
+                        if (orderBookValues.size() > 1000) {
+                            orderBookValues.subList(0, orderBookValues.size() - orderBookLimit).clear();
+                        }
+                    }
                 }
                 if (!isAlive()) {
                     logger.error("failed to restart exchange account: {}", getName());

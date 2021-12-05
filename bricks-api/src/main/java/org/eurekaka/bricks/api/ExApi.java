@@ -89,6 +89,10 @@ public interface ExApi {
 
     // 异步接口集合
 
+    default CompletableFuture<OrderBookValue> asyncGetOrderBook(String symbol, int depth) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
     /**
      * 获取所有交易对信息
      * @return 交易对信息列表

@@ -32,6 +32,7 @@ public class BinanceFutureApiTest {
         String symbol = "EOSUSDT";
 
         // 1. 测试查询接口数据
+//        System.out.println(api.asyncGetOrderBook(symbol, 20).get());
 //        System.out.println(api.getAuthMessage());
 //        System.out.println(api.getPositionValue(null));
 //        System.out.println(api.getExchangeInfos());

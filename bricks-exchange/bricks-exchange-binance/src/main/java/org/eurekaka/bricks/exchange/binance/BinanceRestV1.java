@@ -32,6 +32,10 @@ class BinanceRestV1 {
     public String status;
     public long updateTime;
 
+    public long lastUpdateId;
+    public List<List<Double>> bids;
+    public List<List<Double>> asks;
+
     public BinanceRestV1() {
     }
 }

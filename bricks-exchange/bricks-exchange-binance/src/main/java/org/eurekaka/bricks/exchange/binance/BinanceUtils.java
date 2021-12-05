@@ -1,5 +1,6 @@
 package org.eurekaka.bricks.exchange.binance;
 
+import org.eurekaka.bricks.common.model.OrderBookValue;
 import org.eurekaka.bricks.common.model.OrderStatus;
 import org.eurekaka.bricks.common.model.OrderType;
 
@@ -44,5 +45,4 @@ public class BinanceUtils {
         }
         return OrderType.NONE;
     }
-
 }

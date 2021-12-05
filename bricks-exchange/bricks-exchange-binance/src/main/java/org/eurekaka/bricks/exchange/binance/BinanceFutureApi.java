@@ -540,6 +540,44 @@ public class BinanceFutureApi implements FutureExApi {
         return accountConfig.getUrl() + path + "?" + paramString + "&signature=" + signature;
     }
 
+    @Override
+    public CompletableFuture<OrderBookValue> asyncGetOrderBook(String symbol, int depth) throws ExApiException {
+        try {
+            Map<String, String> params = new HashMap<>();
+            params.put("symbol", symbol);
+            params.put("limit", String.valueOf(depth));
+
+            String url = generateUrl("/fapi/v1/depth", params);
+            HttpRequest request = HttpRequest.newBuilder(new URI(url))
+                    .GET()
+                    .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        try {
+                            BinanceRestV1 result = reader.readValue(response.body());
+                            List<OrderBookValue.PriceSizePair> bids = new ArrayList<>();
+                            if (result.bids != null) {
+                                for (List<Double> bid : result.bids) {
+                                    bids.add(new OrderBookValue.PriceSizePair(bid.get(0), bid.get(1)));
+                                }
+                            }
+                            List<OrderBookValue.PriceSizePair> asks = new ArrayList<>();
+                            if (result.asks != null) {
+                                for (List<Double> ask : result.asks) {
+                                    asks.add(new OrderBookValue.PriceSizePair(ask.get(0), ask.get(1)));
+                                }
+                            }
+                            return new OrderBookValue(result.lastUpdateId, result.lastUpdateId, bids, asks);
+                        } catch (Exception e) {
+                            throw new CompletionException("failed to parse response body: " + response.body(), e);
+                        }
+                    });
+        } catch (Exception e) {
+            throw new ExApiException("failed to get current orders", e);
+        }
+    }
+
     /**
      * json对象第一层
      */
