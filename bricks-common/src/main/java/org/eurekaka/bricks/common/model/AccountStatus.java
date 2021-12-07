@@ -118,11 +118,16 @@ public class AccountStatus {
                 }
             }
 
-            synchronized (bidOrderBooks.get(symbol)) {
-                updateOrderBookValuePair(bidOrderBooks.get(symbol), orderBookValue.bids);
+            if (!orderBookValue.bids.isEmpty()) {
+                synchronized (bidOrderBooks.get(symbol)) {
+                    updateOrderBookValuePair(bidOrderBooks.get(symbol), orderBookValue.bids);
+                }
             }
-            synchronized (askOrderBooks.get(symbol)) {
-                updateOrderBookValuePair(askOrderBooks.get(symbol), orderBookValue.asks);
+
+            if (!orderBookValue.asks.isEmpty()) {
+                synchronized (askOrderBooks.get(symbol)) {
+                    updateOrderBookValuePair(askOrderBooks.get(symbol), orderBookValue.asks);
+                }
             }
         }
     }
@@ -141,7 +146,7 @@ public class AccountStatus {
         if (bookValues != null) {
             boolean found = false;
             for (OrderBookValue bookValue : bookValues) {
-                if (bookValue.firstUpdateId <= orderBookValue.lastUpdateId) {
+                if (orderBookValue.lastUpdateId <= bookValue.lastUpdateId) {
                     found = true;
                 }
                 if (found) {
@@ -161,6 +166,49 @@ public class AccountStatus {
                 map.remove(pair.price);
             } else {
                 map.put(pair.price, pair.size);
+            }
+        }
+    }
+
+    public void updateBidOrderBookTicker(String symbol, double key, double value) {
+        updateOrderBookTicker(bidOrderBooks, symbol, key, value);
+    }
+
+    public void updateAskOrderBookTicker(String symbol, double key, double value) {
+        updateOrderBookTicker(askOrderBooks, symbol, key, value);
+    }
+
+    /**
+     * 根据买一卖一更新订单簿
+     * @param source 订单簿集合
+     * @param symbol 交易对名称
+     * @param key 当前挂单价格
+     * @param value 当前挂单数量
+     */
+    private <K, T> void updateOrderBookTicker(Map<String, TreeMap<K, T>> source, String symbol, K key, T value) {
+        if (source.containsKey(symbol)) {
+            TreeMap<K, T> map = source.get(symbol);
+            if (map.isEmpty()) {
+                return;
+            }
+            if (map.comparator().compare(map.firstKey(), key) >= 0) {
+                return;
+            }
+
+            synchronized (source.get(symbol)) {
+                Iterator<Map.Entry<K, T>> iterator = map.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<K, T> it = iterator.next();
+                    if (map.comparator().compare(it.getKey(), key) < 0) {
+//                        System.out.println("remove key: " + it.getKey() + ", current: " + key);
+                        iterator.remove();
+                    } else {
+                        break;
+                    }
+                }
+                if (!iterator.hasNext()) {
+                    map.put(key, value);
+                }
             }
         }
     }

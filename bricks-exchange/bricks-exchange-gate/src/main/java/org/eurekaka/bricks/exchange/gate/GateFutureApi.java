@@ -356,6 +356,38 @@ public class GateFutureApi implements FutureExApi {
     }
 
     @Override
+    public CompletableFuture<OrderBookValue> asyncGetOrderBook(String symbol, int depth) throws ExApiException {
+        try {
+            HttpRequest request = generateSignedRequest(BASE_PREFIX + "/order_book?contract=" +
+                    symbol + "&limit=" + depth + "&interval=0&with_id=true");
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        if (response.statusCode() != 200) {
+                            throw new CompletionException(new ExApiException(
+                                    "failed to get order book value:" + response.body()));
+                        }
+                        try {
+                            GateRespV1 result = Utils.mapper.readValue(response.body(), GateRespV1.class);
+                            List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
+                            for (GatePriceSizePair bid : result.bids) {
+                                bidPairs.add(new OrderBookValue.PriceSizePair(bid.price, getRealSize(symbol, bid.size)));
+                            }
+                            List<OrderBookValue.PriceSizePair> askPairs = new ArrayList<>();
+                            for (GatePriceSizePair ask : result.asks) {
+                                askPairs.add(new OrderBookValue.PriceSizePair(ask.price, getRealSize(symbol, ask.size)));
+                            }
+                            return new OrderBookValue(result.id, result.id, bidPairs, askPairs);
+                        } catch (JsonProcessingException e) {
+                            throw new CompletionException("failed to parse response body: " + response.body(), e);
+                        }
+
+                    });
+        } catch (Exception e) {
+            throw new ExApiException("failed to get order book value", e);
+        }
+    }
+
+    @Override
     public RiskLimitValue getRiskLimitValue() throws ExApiException {
         try {
             List<PositionRiskLimitValue> positionRiskLimitValues = new ArrayList<>();
@@ -515,6 +547,8 @@ public class GateFutureApi implements FutureExApi {
         public double available;
 
         public long id;
+        public List<GatePriceSizePair> asks;
+        public List<GatePriceSizePair> bids;
 
         public GateRespV1() {
         }

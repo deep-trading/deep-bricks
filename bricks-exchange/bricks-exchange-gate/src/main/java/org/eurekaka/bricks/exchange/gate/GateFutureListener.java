@@ -18,6 +18,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
     private final ObjectReader reader;
     private final ObjectReader reader1;
     private final ObjectReader reader2;
+    private final ObjectReader reader3;
+    private long start;
 
     public GateFutureListener(AccountConfig accountConfig,
                               FutureAccountStatus accountStatus,
@@ -28,6 +30,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
         reader1 = Utils.mapper.reader(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
                 .forType(new TypeReference<List<GateWebSocketResult>>() {});
         reader2 = Utils.mapper.reader().forType(GateWebSocketResultV2.class);
+        reader3 = Utils.mapper.reader().forType(GateWebSocketResultV3.class);
+        start = System.currentTimeMillis();
     }
 
     @Override
@@ -45,64 +49,40 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
                 accountStatus.getFundingRates().put(result.contract, result.funding_rate);
             }
-        } else if ("futures.order_book".equals(resp.channel)) {
-            List<GateWebSocketResult> results = reader1.readValue(resp.result);
-            if ("all".equals(resp.event)) {
-//                System.out.println("all: " + resp.result);
-                for (GateWebSocketResult result : results) {
-//                        if (!result.bids.isEmpty()) {
-//                            bidPrices.put(result.contract, result.bids.get(result.bids.size() - 1).price);
-//                        }
-//                        if (!result.asks.isEmpty()) {
-//                            askPrices.put(result.contract, result.asks.get(0).price);
-//                        }
-
-                    TreeMap<Double, Double> bidOrderBook = new TreeMap<>(Comparator.reverseOrder());
-                    for (GateWebSocketOrderBook bid : result.bids) {
-                        bidOrderBook.put(bid.price, api.getSize(result.contract, bid.size));
-                    }
-                    accountStatus.getBidOrderBooks().put(result.contract, bidOrderBook);
-
-                    TreeMap<Double, Double> askOrderBook = new TreeMap<>(Comparator.naturalOrder());
-                    for (GateWebSocketOrderBook ask : result.asks) {
-                        askOrderBook.put(ask.price, api.getSize(result.contract, ask.size));
-                    }
-                    accountStatus.getAskOrderBooks().put(result.contract, askOrderBook);
-                }
-
-            } else if ("update".equals(resp.event)) {
-//                System.out.println("update: " + resp.result);
-                for (GateWebSocketResult result : results) {
-                    if (result.book_size > 0) {
-                        Utils.updateOrderBookEntry(accountStatus.getBidOrderBooks(), result.book_contract,
-                                result.book_price, api.getSize(result.book_contract, result.book_size));
-                    } else if (result.book_size < 0) {
-                        Utils.updateOrderBookEntry(accountStatus.getAskOrderBooks(), result.book_contract,
-                                result.book_price, api.getSize(result.book_contract, -result.book_size));
-//                            sendLastPrice(new ExLastPrice(name,
-//                                    result.book_contract, "ask", result.book_price));
-                    } else {
-                        // 0 不知道是bid还是ask
-                        Utils.removeOrderBookEntry(accountStatus.getBidOrderBooks(),
-                                result.book_contract, result.book_price);
-                        Utils.removeOrderBookEntry(accountStatus.getAskOrderBooks(),
-                                result.book_contract, result.book_price);
-                    }
-                }
+        } else if ("futures.order_book_update".equals(resp.channel) && "update".equals(resp.event)) {
+            GateWebSocketResultV3 result = reader3.readValue(resp.result);
+            List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
+            for (GatePriceSizePair bid : result.bids) {
+                bidPairs.add(new OrderBookValue.PriceSizePair(bid.price, api.getSize(result.symbol, bid.size)));
             }
+            List<OrderBookValue.PriceSizePair> askPairs = new ArrayList<>();
+            for (GatePriceSizePair ask : result.asks) {
+                askPairs.add(new OrderBookValue.PriceSizePair(ask.price, api.getSize(result.symbol, ask.size)));
+            }
+            OrderBookValue orderBookValue = new OrderBookValue(result.lastUpdateId,
+                    result.firstUpdateId, bidPairs, askPairs);
+            accountStatus.updateOrderBookValue(result.symbol, orderBookValue);
+            long timer = System.currentTimeMillis() - start;
+//            logger.info("{}: depth update message: {}", timer, message);
+//            if (timer > 100000) {
+//                start = start + timer;
+//                logger.info("order book value: {}", orderBookValue);
+//                logger.info("order book values size: {}", accountStatus.getOrderBookValues().get(result.symbol).size());
+//                logger.info("order book bids: {}", accountStatus.getBidOrderBooks().get(result.symbol));
+//                logger.info("order book asks: {}", accountStatus.getAskOrderBooks().get(result.symbol));
+//            }
         } else if ("futures.book_ticker".equals(resp.channel) && "update".equals(resp.event)) {
             GateWebSocketResultV2 result = reader2.readValue(resp.result);
-//            System.out.println(resp.result);
+//            logger.info("{}: book ticker message: {}", System.currentTimeMillis() - start, message);
             if (result.bidPrice > 0 && result.bidSize != 0) {
-                Utils.updateOrderBookTicker(accountStatus.getBidOrderBooks(), result.contract,
+                accountStatus.updateBidOrderBookTicker(result.contract,
                         result.bidPrice, api.getSize(result.contract, result.bidSize));
             }
             if (result.askPrice > 0 && result.askSize != 0) {
-                Utils.updateOrderBookTicker(accountStatus.getAskOrderBooks(), result.contract,
+                accountStatus.updateAskOrderBookTicker(result.contract,
                         result.askPrice, api.getSize(result.contract, result.askSize));
             }
         } else if ("futures.usertrades".equals(resp.channel) && "update".equals(resp.event)) {
-//            System.out.println(message);
             List<GateWebSocketResult> results = reader1.readValue(resp.result);
             for (GateWebSocketResult result : results) {
                 String name = accountStatus.getSymbols().get(result.contract);
@@ -129,7 +109,6 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
             }
         } else if ("futures.orders".equals(resp.channel) && "update".equals(resp.event)) {
-//            System.out.println(message);
             List<GateWebSocketResult> results = reader1.readValue(resp.result);
             for (GateWebSocketResult result : results) {
                 String name = accountStatus.getSymbols().get(result.contract);

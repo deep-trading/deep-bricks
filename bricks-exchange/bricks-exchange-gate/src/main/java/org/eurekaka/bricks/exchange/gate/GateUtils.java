@@ -1,8 +1,12 @@
 package org.eurekaka.bricks.exchange.gate;
 
+import org.eurekaka.bricks.common.model.OrderBookValue;
 import org.eurekaka.bricks.common.model.OrderSide;
 import org.eurekaka.bricks.common.model.OrderStatus;
 import org.eurekaka.bricks.common.model.OrderType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class GateUtils {
 

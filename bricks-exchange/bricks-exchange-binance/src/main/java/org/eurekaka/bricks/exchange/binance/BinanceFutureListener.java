@@ -8,7 +8,7 @@ import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.Utils;
 
 import java.net.http.WebSocket;
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
@@ -75,11 +75,11 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
             SocketBookTicker msg = reader2.readValue(node);
 
             if (msg.bidPrice > 0 && msg.bidSize > 0) {
-                Utils.updateOrderBookTicker(accountStatus.getBidOrderBooks(), msg.symbol, msg.bidPrice, msg.bidSize);
+                accountStatus.updateBidOrderBookTicker(msg.symbol, msg.bidPrice, msg.bidSize);
             }
 
             if (msg.askPrice > 0 && msg.askSize > 0) {
-                Utils.updateOrderBookTicker(accountStatus.getAskOrderBooks(), msg.symbol, msg.askPrice, msg.askSize);
+                accountStatus.updateAskOrderBookTicker(msg.symbol, msg.askPrice, msg.askSize);
             }
         } else {
             BinanceWebSocketMsg msg = reader3.readValue(node);

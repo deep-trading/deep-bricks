@@ -16,12 +16,11 @@ import java.util.Map;
 
 public class GateFuture extends AbstractFutureExchange {
 
-    private final String orderBookSize;
+//    private final String orderBookSize;
 
     public GateFuture(AccountConfig accountConfig) {
         super(accountConfig, new FutureAccountStatus());
-
-        orderBookSize = accountConfig.getProperty("order_book_size", "20");
+//        orderBookSize = accountConfig.getProperty("order_book_size", "20");
     }
 
     @Override
@@ -56,10 +55,11 @@ public class GateFuture extends AbstractFutureExchange {
                     "futures.tickers", "subscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request), true);
             // sub order book
-            payload.add(orderBookSize);
-            payload.add("0");
+            payload.add("100ms");
+            payload.add("20");
+//            payload.add("0");
             GateWebSocketRequest request1 = new GateWebSocketRequest(
-                    "futures.order_book", "subscribe", payload);
+                    "futures.order_book_update", "subscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request1), true);
 
             payload.clear();
@@ -99,10 +99,11 @@ public class GateFuture extends AbstractFutureExchange {
                     "futures.tickers", "unsubscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request), true);
             // sub order book
-            payload.add(orderBookSize);
-            payload.add("0");
+            payload.add("100ms");
+            payload.add("20");
+//            payload.add("0");
             GateWebSocketRequest request1 = new GateWebSocketRequest(
-                    "futures.order_book", "unsubscribe", payload);
+                    "futures.order_book_update", "unsubscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request1), true);
 
             payload.clear();

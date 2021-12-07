@@ -28,6 +28,7 @@ public class GateFutureApiTest {
         String symbol = "EOS_USDT";
 
         // 1. 测试查询接口数据
+        System.out.println(api.asyncGetOrderBook(symbol, 100).get());
 //        System.out.println(api.getAuthMessage());
 //        System.out.println(api.getPositionValue(null));
 //        System.out.println(api.getExchangeInfos());

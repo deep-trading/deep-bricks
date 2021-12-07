@@ -59,7 +59,6 @@ public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi
                 }
                 return null;
             }, executor);
-
             parts.clear();
             CompletionStage<?> cf = accumulatedMessage;
             accumulatedMessage = new CompletableFuture<>();
