@@ -84,18 +84,18 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 });
             }
 
-            long timer = System.currentTimeMillis() - start;
-            double bid = 0;
-            double ask = 0;
-            TreeMap<Double, Double> bidMap = accountStatus.getBidOrderBooks().get(result.symbol);
-            if (bidMap != null && !bidMap.isEmpty()) {
-                bid = bidMap.firstKey();
-            }
-            TreeMap<Double, Double> askMap = accountStatus.getAskOrderBooks().get(result.symbol);
-            if (askMap != null && !askMap.isEmpty()) {
-                ask = askMap.firstKey();
-            }
-            logger.info("{}: bid: {}, ask: {}, depth update message: {}", timer, bid, ask, message);
+//            long timer = System.currentTimeMillis() - start;
+//            double bid = 0;
+//            double ask = 0;
+//            TreeMap<Double, Double> bidMap = accountStatus.getBidOrderBooks().get(result.symbol);
+//            if (bidMap != null && !bidMap.isEmpty()) {
+//                bid = bidMap.firstKey();
+//            }
+//            TreeMap<Double, Double> askMap = accountStatus.getAskOrderBooks().get(result.symbol);
+//            if (askMap != null && !askMap.isEmpty()) {
+//                ask = askMap.firstKey();
+//            }
+//            logger.info("{}: bid: {}, ask: {}, depth update message: {}", timer, bid, ask, message);
 //            if (timer > 100000) {
 //                start = start + timer;
 //                logger.info("order book value: {}", orderBookValue);

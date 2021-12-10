@@ -11,6 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 public class OrderService {
@@ -72,12 +76,16 @@ public class OrderService {
     public List<CurrentOrder> getCurrentOrders(String account, String name) throws ServiceException {
         Info0 info = findInfo(account, name);
         Exchange ex = accountManager.getAccount(account);
-        ExMessage<?> msg = ex.process(new ExAction<>(ExAction.ActionType.GET_CURRENT_ORDER,
-                new CurrentOrderPair(name, info.getSymbol(), 0)));
+        ExMessage<?> msg = ex.process(new ExAction<>(ExAction.ActionType.GET_CURRENT_ORDER_V2,
+                new ActionPair(name, info.getSymbol())));
         if (msg.getType().equals(ExMessage.ExMsgType.ERROR)) {
             throw new ServiceException("failed to get current orders", (Exception) msg.getData());
         }
-        return (List<CurrentOrder>) msg.getData();
+        try {
+            return ((CompletableFuture<List<CurrentOrder>>) msg.getData()).get(15, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            throw new ServiceException("failed to get current orders", e);
+        }
     }
 
     public CurrentOrder cancelOrder(String account, String name, String orderId) throws ServiceException {

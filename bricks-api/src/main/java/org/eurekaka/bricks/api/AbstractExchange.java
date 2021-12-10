@@ -306,10 +306,14 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
     protected void buildOrderBook(String symbol) throws ExApiException {
         if (orderBookLimit > 0) {
-            api.asyncGetOrderBook(symbol, orderBookLimit).thenAccept(orderBookValue -> {
-                accountStatus.buildOrderBookValue(symbol, orderBookValue);
-                logger.info("built order book: {}, {}", getName(), symbol);
-            });
+            try {
+                api.asyncGetOrderBook(symbol, orderBookLimit).thenAccept(orderBookValue -> {
+                    accountStatus.buildOrderBookValue(symbol, orderBookValue);
+                    logger.info("built order book: {}, {}", getName(), symbol);
+                }).get(3000, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                throw new ExApiException("failed to build order book", e);
+            }
         }
     }
 
