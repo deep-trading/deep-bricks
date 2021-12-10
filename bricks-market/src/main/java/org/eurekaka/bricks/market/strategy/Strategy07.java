@@ -172,6 +172,9 @@ public class Strategy07 implements Strategy {
         // 检查当前的对冲订单
         orderTracker.track();
 
+        posQuantity1 = accountActor.getPosition(info1).getQuantity();
+        posQuantity2 = accountActor.getPosition(info2).getQuantity();
+
         boolean checked1 = checkOrderInterval(1);
         AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY,
                 bidOrder1, posQuantity1, checked1);
@@ -211,25 +214,25 @@ public class Strategy07 implements Strategy {
                 if (bidOrder1 != null && orderNotify.getClientOrderId().equals(bidOrder1.getClientOrderId()) ||
                         askOrder1 != null && orderNotify.getClientOrderId().equals(askOrder1.getClientOrderId())) {
                     order = generateMarketHedgingOrder(orderNotify, info1, info2);
-                    if (order != null && order.getQuantity() > 0) {
-                        long base = posQuantity1;
-                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
-                            posQuantity1 = base + order.getQuantity();
-                        } else {
-                            posQuantity1 = base - order.getQuantity();
-                        }
-                    }
+//                    if (order != null && order.getQuantity() > 0) {
+//                        long base = posQuantity1;
+//                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
+//                            posQuantity1 = base + order.getQuantity();
+//                        } else {
+//                            posQuantity1 = base - order.getQuantity();
+//                        }
+//                    }
                 } else if (bidOrder2 != null && orderNotify.getClientOrderId().equals(bidOrder2.getClientOrderId()) ||
                         askOrder2 != null && orderNotify.getClientOrderId().equals(askOrder2.getClientOrderId())) {
                     order = generateMarketHedgingOrder(orderNotify, info2, info1);
-                    if (order != null && order.getQuantity() > 0) {
-                        long base = posQuantity2;
-                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
-                            posQuantity2 = base + order.getQuantity();
-                        } else {
-                            posQuantity2 = base - order.getQuantity();
-                        }
-                    }
+//                    if (order != null && order.getQuantity() > 0) {
+//                        long base = posQuantity2;
+//                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
+//                            posQuantity2 = base + order.getQuantity();
+//                        } else {
+//                            posQuantity2 = base - order.getQuantity();
+//                        }
+//                    }
                 }
                 if (order != null) {
                     orderTracker.submit(order).thenAccept(o -> {
@@ -382,7 +385,8 @@ public class Strategy07 implements Strategy {
 
         AsyncStateOrder order = null;
         if (side.equals(OrderSide.BUY)) {
-            DepthPrice depthPrice = accountActor.getBidDepthPrice(other);
+            DepthPrice depthPrice = accountActor.getBidDepthPrice(other.getAccount(),
+                    other.getName(), other.getSymbol(), (int) orderQuantity);
             // 挂单，买一价价差配置
             double bidPriceRate = strategyConfig.getDouble("bid_price_rate", 0.0002);
             double price = depthPrice.price;
@@ -397,7 +401,8 @@ public class Strategy07 implements Strategy {
             order = new AsyncStateOrder(info.getAccount(), info.getName(), info.getSymbol(),
                     side, OrderType.LIMIT_GTX, size, price, orderQuantity, OrderState.SUBMITTING);
         } else {
-            DepthPrice depthPrice = accountActor.getAskDepthPrice(other);
+            DepthPrice depthPrice = accountActor.getAskDepthPrice(other.getAccount(),
+                    other.getName(), other.getSymbol(), (int) orderQuantity);
             // 挂单，卖一价价差配置
             double askPriceRate = strategyConfig.getDouble("ask_price_rate", 0.0002);
             double price = depthPrice.price;

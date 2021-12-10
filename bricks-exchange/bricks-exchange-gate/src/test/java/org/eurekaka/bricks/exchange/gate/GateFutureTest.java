@@ -23,6 +23,7 @@ public class GateFutureTest {
         // local test
         accountConfig.setProperty("http_proxy_host", "localhost");
         accountConfig.setProperty("http_proxy_port", "8123");
+        accountConfig.setProperty("order_book_limit", "100");
 
         Exchange exchange = new GateFuture(accountConfig);
         exchange.start();

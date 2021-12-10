@@ -32,6 +32,8 @@ public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi
 
     private final Executor executor;
 
+    protected int orderBookLimit;
+
     public WebSocketListener(AccountConfig accountConfig, A accountStatus, B api, Executor executor) {
         this.accountConfig = accountConfig;
         this.accountStatus = accountStatus;
@@ -40,6 +42,9 @@ public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi
         this.executor = executor;
 
         this.binaryParts = new ArrayList<>();
+
+        this.orderBookLimit = Integer.parseInt(accountConfig.getProperty(
+                "order_book_limit", "500"));
     }
 
     @Override

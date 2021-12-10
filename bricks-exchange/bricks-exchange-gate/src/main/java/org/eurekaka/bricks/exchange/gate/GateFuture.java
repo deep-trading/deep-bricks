@@ -21,6 +21,10 @@ public class GateFuture extends AbstractFutureExchange {
     public GateFuture(AccountConfig accountConfig) {
         super(accountConfig, new FutureAccountStatus());
 //        orderBookSize = accountConfig.getProperty("order_book_size", "20");
+        // gate 只允许获取200个价格档位
+        if (this.orderBookLimit > 200) {
+            this.orderBookLimit = 100;
+        }
     }
 
     @Override
@@ -55,17 +59,23 @@ public class GateFuture extends AbstractFutureExchange {
                     "futures.tickers", "subscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request), true);
             // sub order book
+//            payload.add("20");
+//            payload.add("0");
+//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+//                    "futures.order_book", "subscribe", payload)), true);
+
+            payload.clear();
+            payload.add(symbol);
             payload.add("100ms");
             payload.add("20");
-//            payload.add("0");
             GateWebSocketRequest request1 = new GateWebSocketRequest(
                     "futures.order_book_update", "subscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request1), true);
 
-            payload.clear();
-            payload.add(symbol);
-            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
-                    "futures.book_ticker", "subscribe", payload)), true);
+//            payload.clear();
+//            payload.add(symbol);
+//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+//                    "futures.book_ticker", "subscribe", payload)), true);
 
             payload.clear();
             payload.add(accountConfig.getUid());
@@ -99,12 +109,17 @@ public class GateFuture extends AbstractFutureExchange {
                     "futures.tickers", "unsubscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request), true);
             // sub order book
+//            payload.add("20");
+//            payload.add("0");
+//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+//                    "futures.order_book", "unsubscribe", payload)), true);
+
+            payload.clear();
+            payload.add(symbol);
             payload.add("100ms");
             payload.add("20");
-//            payload.add("0");
-            GateWebSocketRequest request1 = new GateWebSocketRequest(
-                    "futures.order_book_update", "unsubscribe", payload);
-            this.webSocket.sendText(Utils.mapper.writeValueAsString(request1), true);
+            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+                    "futures.order_book_update", "unsubscribe", payload)), true);
 
             payload.clear();
             payload.add(accountConfig.getUid());

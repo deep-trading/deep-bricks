@@ -32,6 +32,10 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
         reader2 = Utils.mapper.reader().forType(GateWebSocketResultV2.class);
         reader3 = Utils.mapper.reader().forType(GateWebSocketResultV3.class);
         start = System.currentTimeMillis();
+
+        if (orderBookLimit > 200) {
+            orderBookLimit = 100;
+        }
     }
 
     @Override
@@ -49,6 +53,17 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
                 accountStatus.getFundingRates().put(result.contract, result.funding_rate);
             }
+//        } else if ("futures.order_book".equals(resp.channel) && "all".equals(resp.event)) {
+//            GateWebSocketResultV3 result = reader3.readValue(resp.result);
+//            List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
+//            for (GatePriceSizePair bid : result.bids) {
+//                bidPairs.add(new OrderBookValue.PriceSizePair(bid.price, api.getSize(result.symbol, bid.size)));
+//            }
+//            List<OrderBookValue.PriceSizePair> askPairs = new ArrayList<>();
+//            for (GatePriceSizePair ask : result.asks) {
+//                askPairs.add(new OrderBookValue.PriceSizePair(ask.price, api.getSize(result.symbol, ask.size)));
+//            }
+//            accountStatus.buildOrderBook(result.symbol, bidPairs, askPairs);
         } else if ("futures.order_book_update".equals(resp.channel) && "update".equals(resp.event)) {
             GateWebSocketResultV3 result = reader3.readValue(resp.result);
             List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
@@ -59,11 +74,28 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
             for (GatePriceSizePair ask : result.asks) {
                 askPairs.add(new OrderBookValue.PriceSizePair(ask.price, api.getSize(result.symbol, ask.size)));
             }
+//            accountStatus.updateOrderBook(result.symbol, bidPairs, askPairs);
             OrderBookValue orderBookValue = new OrderBookValue(result.lastUpdateId,
                     result.firstUpdateId, bidPairs, askPairs);
-            accountStatus.updateOrderBookValue(result.symbol, orderBookValue);
+            if (!accountStatus.updateOrderBookValue(result.symbol, orderBookValue)) {
+                logger.warn("failed to update order book value, no serial update id: {}", orderBookValue);
+                api.asyncGetOrderBook(result.symbol, orderBookLimit).thenAccept(value -> {
+                    accountStatus.buildOrderBookValue(result.symbol, value);
+                });
+            }
+
             long timer = System.currentTimeMillis() - start;
-//            logger.info("{}: depth update message: {}", timer, message);
+            double bid = 0;
+            double ask = 0;
+            TreeMap<Double, Double> bidMap = accountStatus.getBidOrderBooks().get(result.symbol);
+            if (bidMap != null && !bidMap.isEmpty()) {
+                bid = bidMap.firstKey();
+            }
+            TreeMap<Double, Double> askMap = accountStatus.getAskOrderBooks().get(result.symbol);
+            if (askMap != null && !askMap.isEmpty()) {
+                ask = askMap.firstKey();
+            }
+            logger.info("{}: bid: {}, ask: {}, depth update message: {}", timer, bid, ask, message);
 //            if (timer > 100000) {
 //                start = start + timer;
 //                logger.info("order book value: {}", orderBookValue);

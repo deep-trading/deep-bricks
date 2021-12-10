@@ -107,15 +107,19 @@ public class AccountStatus {
         return klineValues;
     }
 
-    public void updateOrderBookValue(String symbol, OrderBookValue orderBookValue) {
+    public boolean updateOrderBookValue(String symbol, OrderBookValue orderBookValue) {
         // 更新原有的order book
         if (orderBookValues.containsKey(symbol)) {
             // 缓存order book value
             synchronized (orderBookValues.get(symbol)) {
                 LinkedList<OrderBookValue> bookValues = orderBookValues.get(symbol);
-                if (bookValues.isEmpty() || orderBookValue.lastUpdateId >= bookValues.getLast().lastUpdateId) {
-                    bookValues.add(orderBookValue);
+                if (!bookValues.isEmpty() &&
+                        orderBookValue.firstUpdateId != bookValues.getLast().lastUpdateId + 1) {
+                    // 此时id序列号不连续，重新构建order book
+                    bookValues.clear();
+                    return false;
                 }
+                bookValues.add(orderBookValue);
             }
 
             if (!orderBookValue.bids.isEmpty()) {
@@ -130,6 +134,7 @@ public class AccountStatus {
                 }
             }
         }
+        return true;
     }
 
     // not thread safe
@@ -159,6 +164,38 @@ public class AccountStatus {
         bidOrderBooks.put(symbol, bidTreeMap);
         askOrderBooks.put(symbol, askTreeMap);
     }
+
+    public void buildOrderBook(String symbol, List<OrderBookValue.PriceSizePair> bidPairs,
+                                    List<OrderBookValue.PriceSizePair> askPairs) {
+        TreeMap<Double, Double> bidTreeMap = new TreeMap<>(Comparator.reverseOrder());
+        TreeMap<Double, Double> askTreeMap = new TreeMap<>(Comparator.naturalOrder());
+
+        for (OrderBookValue.PriceSizePair pair : bidPairs) {
+            bidTreeMap.put(pair.price, pair.size);
+        }
+        for (OrderBookValue.PriceSizePair pair : askPairs) {
+            askTreeMap.put(pair.price, pair.size);
+        }
+
+        bidOrderBooks.put(symbol, bidTreeMap);
+        askOrderBooks.put(symbol, askTreeMap);
+    }
+
+    public void updateOrderBook(String symbol, List<OrderBookValue.PriceSizePair> bidPairs,
+                               List<OrderBookValue.PriceSizePair> askPairs) {
+        if (!bidPairs.isEmpty()) {
+            synchronized (bidOrderBooks.get(symbol)) {
+                updateOrderBookValuePair(bidOrderBooks.get(symbol), bidPairs);
+            }
+        }
+
+        if (!askPairs.isEmpty()) {
+            synchronized (askOrderBooks.get(symbol)) {
+                updateOrderBookValuePair(askOrderBooks.get(symbol), askPairs);
+            }
+        }
+    }
+
 
     private void updateOrderBookValuePair(Map<Double, Double> map, List<OrderBookValue.PriceSizePair> pairs) {
         for (OrderBookValue.PriceSizePair pair : pairs) {

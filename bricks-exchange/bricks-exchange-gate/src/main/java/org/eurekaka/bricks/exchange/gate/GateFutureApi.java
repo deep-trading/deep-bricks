@@ -376,7 +376,8 @@ public class GateFutureApi implements FutureExApi {
                             for (GatePriceSizePair ask : result.asks) {
                                 askPairs.add(new OrderBookValue.PriceSizePair(ask.price, getRealSize(symbol, ask.size)));
                             }
-                            return new OrderBookValue(result.id, result.id, bidPairs, askPairs);
+                            return new OrderBookValue(result.id + 1,
+                                    result.id + 1, bidPairs, askPairs);
                         } catch (JsonProcessingException e) {
                             throw new CompletionException("failed to parse response body: " + response.body(), e);
                         }

@@ -59,8 +59,8 @@ public class GateFutureApiTest {
         // 4. 测试异步订单接口
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.MARKET, 1, 4.1, 9));
-//        testAsyncOrderApi(api, new Order("n1", name, symbol,
-//                OrderSide.SELL, OrderType.LIMIT_GTX, 2, 4.48, 9));
+        testAsyncOrderApi(api, new Order("n1", name, symbol,
+                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.48, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 3.9, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,

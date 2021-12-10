@@ -296,6 +296,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
             this.accountStatus.getAskOrderBooks().remove(symbolPair.symbol);
             this.accountStatus.getKlineValues().remove(symbolPair.symbol);
             accountStatus.getSymbols().remove(symbolPair.symbol);
+            accountStatus.getOrderBookValues().clear();
         }
         return new ExMessage<>(ExMessage.ExMsgType.RIGHT);
     }
@@ -304,10 +305,12 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
     protected void sendUnsub(String symbol) throws ExApiException {}
 
     protected void buildOrderBook(String symbol) throws ExApiException {
-        api.asyncGetOrderBook(symbol, orderBookLimit).thenAccept(orderBookValue -> {
-            accountStatus.buildOrderBookValue(symbol, orderBookValue);
-            logger.info("built order book: {}, {}", getName(), symbol);
-        });
+        if (orderBookLimit > 0) {
+            api.asyncGetOrderBook(symbol, orderBookLimit).thenAccept(orderBookValue -> {
+                accountStatus.buildOrderBookValue(symbol, orderBookValue);
+                logger.info("built order book: {}, {}", getName(), symbol);
+            });
+        }
     }
 
     /**

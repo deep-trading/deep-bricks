@@ -27,6 +27,7 @@ public class BinanceFutureTest {
         // local test
         accountConfig.setProperty("http_proxy_host", "localhost");
         accountConfig.setProperty("http_proxy_port", "8123");
+        accountConfig.setProperty("order_book_limit", "500");
 //        accountConfig.setProperty("enable_kline", "true");
 
         Exchange exchange = new BinanceFuture(accountConfig);

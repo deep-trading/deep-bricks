@@ -17,7 +17,7 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
     private final ObjectReader reader1;
     private final ObjectReader reader2;
     private final ObjectReader reader3;
-//    private long start;
+    private long start;
 
     public BinanceFutureListener(AccountConfig accountConfig,
                                  FutureAccountStatus accountStatus,
@@ -26,7 +26,7 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         reader1 = Utils.mapper.reader().forType(BinanceWebSocketMsgV2.class);
         reader2 = Utils.mapper.reader().forType(SocketBookTicker.class);
         reader3 = Utils.mapper.reader().forType(BinanceWebSocketMsg.class);
-//        start = System.currentTimeMillis();
+        start = System.currentTimeMillis();
     }
 
     @Override
@@ -57,18 +57,27 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
 //                }
 //                accountStatus.getAskOrderBooks().put(msg.symbol, askOrderBook);
 //            }
-            OrderBookValue orderBookValue = new OrderBookValue(msg.lastUpdateId, msg.firstUpdateId,
+            OrderBookValue orderBookValue = new OrderBookValue(msg.lastUpdateId - 1, msg.parentUpdateId,
                     OrderBookValue.parsePairs(msg.bids), OrderBookValue.parsePairs(msg.asks));
-            accountStatus.updateOrderBookValue(msg.symbol, orderBookValue);
+            if (!accountStatus.updateOrderBookValue(msg.symbol, orderBookValue)) {
+                logger.warn("failed to update order book value, no serial update id: {}", orderBookValue);
+                api.asyncGetOrderBook(msg.symbol, orderBookLimit).thenAccept(value -> {
+                    accountStatus.buildOrderBookValue(msg.symbol, value);
+                });
+            }
+
 //            long timer = System.currentTimeMillis() - start;
-//            if (timer > 10000) {
-//                start = start + timer;
-//                logger.info("{}: depth update message: {}", timer, message);
-//                logger.info("order book value: {}", orderBookValue);
-//                logger.info("order book values size: {}", accountStatus.getOrderBookValues().get(msg.symbol).size());
-//                logger.info("order book bids: {}", accountStatus.getBidOrderBooks().get(msg.symbol));
-//                logger.info("order book asks: {}", accountStatus.getAskOrderBooks().get(msg.symbol));
+//            double bid = 0;
+//            double ask = 0;
+//            TreeMap<Double, Double> bidMap = accountStatus.getBidOrderBooks().get(msg.symbol);
+//            if (bidMap != null && !bidMap.isEmpty()) {
+//                bid = bidMap.firstKey();
 //            }
+//            TreeMap<Double, Double> askMap = accountStatus.getAskOrderBooks().get(msg.symbol);
+//            if (askMap != null && !askMap.isEmpty()) {
+//                ask = askMap.firstKey();
+//            }
+//            logger.info("{}: bid: {}, ask: {}, depth update message: {}", timer, bid, ask, message);
         } else if ("bookTicker".equals(eventName)) {
             // 使用bookTicker更新 order book 的买一卖一
 //            logger.info("bookTicker message: {}", message);
@@ -194,6 +203,8 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         public long firstUpdateId;
         @JsonProperty("u")
         public long lastUpdateId;
+        @JsonProperty("pu")
+        public long parentUpdateId;
 
 
         public BinanceWebSocketMsgV2() {
