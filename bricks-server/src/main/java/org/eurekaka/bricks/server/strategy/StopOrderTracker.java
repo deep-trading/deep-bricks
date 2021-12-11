@@ -131,6 +131,10 @@ public class StopOrderTracker implements OrderTracker {
                         throw new CompletionException("failed to get order after cancelling", e);
                     }
                 }).thenAccept(currentOrder -> {
+                    if (currentOrder == null) {
+                        logger.warn("order not existed: {}", order);
+                        return;
+                    }
                     if (OrderStatus.FILLED.equals(currentOrder.getStatus())) {
                         logger.info("current order has been filled: {}", currentOrder);
                         return;

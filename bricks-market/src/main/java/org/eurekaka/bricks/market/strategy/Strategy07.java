@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
@@ -45,10 +46,8 @@ public class Strategy07 implements Strategy {
 
     private volatile long posQuantity1;
     private volatile long posQuantity2;
-
-    // 上次下单时间
-    private volatile long lastOrderTime1;
-    private volatile long lastOrderTime2;
+    // account + bid/ask -> current time
+    private final Map<String, Long> lastOrderTimeMap;
 
     private volatile long timeCounter;
 
@@ -64,6 +63,8 @@ public class Strategy07 implements Strategy {
     private boolean isDirect;
     private double orderProfitRate;
 
+    private int timeCounterInterval;
+
     public Strategy07(BrickContext brickContext, StrategyConfig strategyConfig) {
         this.brickContext = brickContext;
         this.strategyConfig = strategyConfig;
@@ -74,6 +75,8 @@ public class Strategy07 implements Strategy {
 
         this.orderIndex1 = 0;
         this.orderIndex2 = 0;
+
+        lastOrderTimeMap = new ConcurrentHashMap<>();
 
         filledOrderSize = new ConcurrentHashMap<>();
     }
@@ -104,29 +107,48 @@ public class Strategy07 implements Strategy {
         posQuantity2 = accountActor.getPosition(info2).getQuantity();
 
         timeCounter = System.currentTimeMillis();
+        timeCounterInterval = strategyConfig.getInt("time_counter_interval", 180000);
 
         // 初始化订单跟踪器
         List<CurrentOrder> trackingOrders = new ArrayList<>();
-        for (CurrentOrder currentOrder : accountActor.getCurrentOrders(info1)) {
-            if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
-                trackingOrders.add(currentOrder);
-            } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
-                // 取消该订单
-                accountActor.asyncCancelOrder(currentOrder.getAccount(),
-                        currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+        accountActor.asyncGetCurrentOrders(info1).thenAccept(currentOrders -> {
+            for (CurrentOrder currentOrder : currentOrders) {
+                if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
+                    trackingOrders.add(currentOrder);
+                } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
+                    // 取消该订单
+                    try {
+                        accountActor.asyncCancelOrder(currentOrder.getAccount(),
+                                currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+                    } catch (StrategyException e) {
+                        throw new CompletionException("failed to init cancel order: " + currentOrder, e);
+                    }
+                }
             }
-        }
-        for (CurrentOrder currentOrder : accountActor.getCurrentOrders(info2)) {
-            if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
-                trackingOrders.add(currentOrder);
-            } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
-                // 取消该订单
-                accountActor.asyncCancelOrder(currentOrder.getAccount(),
-                        currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+        });
+
+        accountActor.asyncGetCurrentOrders(info2).thenAccept(currentOrders -> {
+            for (CurrentOrder currentOrder : currentOrders) {
+                if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
+                    trackingOrders.add(currentOrder);
+                } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
+                    // 取消该订单
+                    try {
+                        accountActor.asyncCancelOrder(currentOrder.getAccount(),
+                                currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+                    } catch (StrategyException e) {
+                        throw new CompletionException("failed to init cancel order: " + currentOrder, e);
+                    }
+                }
             }
-        }
+        });
 
         orderTracker.init(trackingOrders);
+
+        lastOrderTimeMap.put(info1.getAccount() + OrderSide.BUY, System.currentTimeMillis());
+        lastOrderTimeMap.put(info1.getAccount() + OrderSide.SELL, System.currentTimeMillis());
+        lastOrderTimeMap.put(info2.getAccount() + OrderSide.BUY, System.currentTimeMillis());
+        lastOrderTimeMap.put(info2.getAccount() + OrderSide.SELL, System.currentTimeMillis());
     }
 
     @Override
@@ -158,8 +180,14 @@ public class Strategy07 implements Strategy {
         }
 
         // 重置时间计数器
-        if (System.currentTimeMillis() - timeCounter > 300000) {
+        if (System.currentTimeMillis() - timeCounter > timeCounterInterval) {
             timeCounter = System.currentTimeMillis();
+            // log internal state here
+            logger.info("position 1: {}, position 2: {}", posQuantity1, posQuantity2);
+            logger.info("bid order1: {}", bidOrder1);
+            logger.info("ask order1: {}", askOrder1);
+            logger.info("bid order2: {}", bidOrder2);
+            logger.info("ask order2: {}", askOrder2);
         }
 
         // 清理订单通知记录
@@ -175,28 +203,22 @@ public class Strategy07 implements Strategy {
         posQuantity1 = accountActor.getPosition(info1).getQuantity();
         posQuantity2 = accountActor.getPosition(info2).getQuantity();
 
-        boolean checked1 = checkOrderInterval(1);
-        AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY,
-                bidOrder1, posQuantity1, checked1);
+        AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
         if (o1 != null) {
             bidOrder1 = o1;
         }
 
-        AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL,
-                askOrder1, posQuantity1, checked1);
+        AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
         if (o2 != null) {
             askOrder1 = o2;
         }
 
-        boolean checked2 = checkOrderInterval(2);
-        AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY,
-                bidOrder2, posQuantity2, checked2);
+        AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
         if (o3 != null) {
             bidOrder2 = o3;
         }
 
-        AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL,
-                askOrder2, posQuantity2, checked2);
+        AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
         if (o4 != null) {
             askOrder2 = o4;
         }
@@ -294,7 +316,7 @@ public class Strategy07 implements Strategy {
     }
 
     private AsyncStateOrder updateOrder(Info0 info, Info0 other, OrderSide side,
-                              AsyncStateOrder currentOrder, long posQuantity, boolean checked) throws StrategyException {
+                              AsyncStateOrder currentOrder, long posQuantity) throws StrategyException {
         if (currentOrder != null && (currentOrder.getState().equals(OrderState.SUBMITTING) ||
                 currentOrder.getState().equals(OrderState.CANCELLING))) {
             return null;
@@ -317,6 +339,8 @@ public class Strategy07 implements Strategy {
                         logger.info("{}: cancel bid order: {}",
                                 System.currentTimeMillis() - timeCounter, currentOrder);
                     });
+                    // 控制撤单后，一定时间内不再下单
+                    lastOrderTimeMap.put(info.getAccount() + side, System.currentTimeMillis());
                     return null;
                 }
             } else {
@@ -329,6 +353,7 @@ public class Strategy07 implements Strategy {
                         logger.info("{}: cancel ask order: {}",
                                 System.currentTimeMillis() - timeCounter, currentOrder);
                     });
+                    lastOrderTimeMap.put(info.getAccount() + side, System.currentTimeMillis());
                     return null;
                 }
             }
@@ -341,13 +366,13 @@ public class Strategy07 implements Strategy {
 
         // 若是可以下单
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
-            if (checked) {
+            if (checkOrderInterval(info.getAccount() + side)) {
                 orderIndex1 = (orderIndex1 + 1) % 1000000;
                 String clientOrderId = info.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
-                    if (OrderStatus.NEW.equals(newOrder.getStatus())) {
+                    if (newOrder != null && OrderStatus.NEW.equals(newOrder.getStatus())) {
                         order.setState(OrderState.SUBMITTED);
                     } else {
                         order.setState(OrderState.CANCELLED);
@@ -434,24 +459,15 @@ public class Strategy07 implements Strategy {
 
     /**
      * 防止下单频率过高，在短时间内禁止下单
-     * @param type type == 1，info1；type == 2，info2
+     * @param key account name + side
      * @return 是否允许下单
      */
-    private boolean checkOrderInterval(int type) {
+    private boolean checkOrderInterval(String key) {
         long currentTime = System.currentTimeMillis();
-        int orderInterval = strategyConfig.getInt("order_interval", 1000);
-
-        if (type == 1) {
-            if (currentTime - lastOrderTime1 < orderInterval) {
-                return false;
-            }
-            lastOrderTime1 = currentTime;
-        } else if (type == 2) {
-            if (currentTime - lastOrderTime2 < orderInterval) {
-                return false;
-            }
-            lastOrderTime2 = currentTime;
+        if (currentTime - lastOrderTimeMap.get(key) < strategyConfig.getInt("order_interval", 1000)) {
+            return false;
         }
+        lastOrderTimeMap.put(key, currentTime);
         return true;
     }
 }
