@@ -199,13 +199,9 @@ public class GateFutureApi implements FutureExApi {
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
                 try {
                     GateOrder result = Utils.mapper.readValue(response.body(), GateOrder.class);
-//                    System.out.println(response.body());
                     if (result.id == 0) {
-                        if ("ORDER_POC_IMMEDIATE".equals(result.label)) {
-                            return null;
-                        }
-                        throw new CompletionException(
-                                new ExApiException("failed to make order: " + response.body()));
+                        logger.error("failed to make order {}", response.body());
+                        return null;
                     }
                     double filled = Math.abs(result.size - result.left);
                     filled = filled * contractQuantos.get(result.contract);
