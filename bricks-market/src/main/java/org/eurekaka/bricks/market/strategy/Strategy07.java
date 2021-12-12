@@ -284,8 +284,8 @@ public class Strategy07 implements Strategy {
             }
             double size = Utils.round(sizeDiff, sizePrecision);
 
-            orderIndex2 = (orderIndex2 + 1) % 1000000;
-            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex2;
+            orderIndex2 = (orderIndex2 + 1) % 1000;
+            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex2;
             double price = orderNotify.getPrice();
             if (OrderSide.BUY.equals(orderNotify.getSide())) {
                 // 高价卖
@@ -367,8 +367,8 @@ public class Strategy07 implements Strategy {
         // 若是可以下单
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
             if (checkOrderInterval(info.getAccount() + side)) {
-                orderIndex1 = (orderIndex1 + 1) % 1000000;
-                String clientOrderId = info.getName() + "_" + System.currentTimeMillis() + "_" + orderIndex1;
+                orderIndex1 = (orderIndex1 + 1) % 1000;
+                String clientOrderId = info.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
