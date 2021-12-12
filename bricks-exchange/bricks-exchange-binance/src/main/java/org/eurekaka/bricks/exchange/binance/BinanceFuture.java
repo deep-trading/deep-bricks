@@ -42,9 +42,8 @@ public class BinanceFuture extends AbstractFutureExchange {
             webSocket.sendText(Utils.mapper.writeValueAsString(
                     new BinanceSocketSub("SUBSCRIBE",
                             symbol.toLowerCase() + "@markPrice@1s",
-                            symbol.toLowerCase() + "@depth@100ms"
-//                            symbol.toLowerCase() + "@bookTicker"
-                    )), true);
+                            symbol.toLowerCase() + "@depth@100ms",
+                            symbol.toLowerCase() + "@bookTicker")), true);
             if (enableKlineSub) {
                 webSocket.sendText(Utils.mapper.writeValueAsString(
                         new BinanceSocketSub("SUBSCRIBE",
@@ -62,9 +61,8 @@ public class BinanceFuture extends AbstractFutureExchange {
             webSocket.sendText(Utils.mapper.writeValueAsString(
                     new BinanceSocketSub("UNSUBSCRIBE",
                             symbol.toLowerCase() + "@markPrice@1s",
-                            symbol.toLowerCase() + "@depth@100ms"
-//                            symbol.toLowerCase() + "@bookTicker"
-                    )), true);
+                            symbol.toLowerCase() + "@depth@100ms",
+                            symbol.toLowerCase() + "@bookTicker")), true);
             if (enableKlineSub) {
                 webSocket.sendText(Utils.mapper.writeValueAsString(
                         new BinanceSocketSub("UNSUBSCRIBE",

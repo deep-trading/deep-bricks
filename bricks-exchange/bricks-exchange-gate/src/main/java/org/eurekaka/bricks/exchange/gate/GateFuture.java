@@ -72,10 +72,10 @@ public class GateFuture extends AbstractFutureExchange {
                     "futures.order_book_update", "subscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request1), true);
 
-//            payload.clear();
-//            payload.add(symbol);
-//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
-//                    "futures.book_ticker", "subscribe", payload)), true);
+            payload.clear();
+            payload.add(symbol);
+            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+                    "futures.book_ticker", "subscribe", payload)), true);
 
             payload.clear();
             payload.add(accountConfig.getUid());
@@ -108,11 +108,6 @@ public class GateFuture extends AbstractFutureExchange {
             GateWebSocketRequest request = new GateWebSocketRequest(
                     "futures.tickers", "unsubscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request), true);
-            // sub order book
-//            payload.add("20");
-//            payload.add("0");
-//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
-//                    "futures.order_book", "unsubscribe", payload)), true);
 
             payload.clear();
             payload.add(symbol);
@@ -120,6 +115,11 @@ public class GateFuture extends AbstractFutureExchange {
             payload.add("20");
             this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
                     "futures.order_book_update", "unsubscribe", payload)), true);
+
+            payload.clear();
+            payload.add(symbol);
+            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+                    "futures.book_ticker", "unsubscribe", payload)), true);
 
             payload.clear();
             payload.add(accountConfig.getUid());
