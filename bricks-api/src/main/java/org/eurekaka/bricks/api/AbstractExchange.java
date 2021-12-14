@@ -88,7 +88,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         this.klineInterval = KLineInterval.getKLineInterval(accountConfig
                 .getProperty("kline_interval", "1m"));
 
-        this.orderBookLimit = Integer.parseInt(accountConfig.getProperty("order_book_limit", "500"));
+        this.orderBookLimit = Integer.parseInt(accountConfig.getProperty("order_book_limit", "0"));
     }
 
     @Override
@@ -226,6 +226,8 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
                 case GET_MARK_USDT:
                     return new ExMessage<>(ExMessage.ExMsgType.RIGHT, accountStatus.getMarkUsdt());
+                case GET_CURRENCY_RATE:
+                    return new ExMessage<>(ExMessage.ExMsgType.RIGHT, accountStatus.getCurrencyRate());
 
                 case TRANSFER_ASSET:
                     return transferAsset((AssetTransfer) action.getData());

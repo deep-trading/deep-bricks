@@ -61,15 +61,26 @@ public interface FutureExApi extends ExApi {
         throw new ExApiException("not implemented.");
     }
 
+    // 异步获取合约持仓信息接口
     default CompletableFuture<List<PositionValue>> asyncGetPositionValues() throws ExApiException {
         throw new ExApiException("not implemented");
     }
 
+    // 永续合约账户风险信息接口
     default CompletableFuture<RiskLimitValue> asyncGetRiskLimitValue() throws ExApiException {
         throw new ExApiException("not implemented");
     }
 
-    default CompletableFuture<Void> asyncUpdateRiskLimit(String symbol, int leverage) throws ExApiException {
+    default CompletableFuture<Void> asyncUpdateLeverage(String symbol, int leverage) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    default CompletableFuture<Void> asyncUpdateLimitValue(String symbol, int limit) throws ExApiException {
+        throw new ExApiException("not implemented");
+    }
+
+    // 永续合约资金费率和资金费接口
+    default CompletableFuture<Double> asyncGetFundingRate(String symbol) throws ExApiException {
         throw new ExApiException("not implemented");
     }
 

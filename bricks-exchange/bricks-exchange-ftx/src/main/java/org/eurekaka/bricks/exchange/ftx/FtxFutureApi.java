@@ -1,11 +1,15 @@
 package org.eurekaka.bricks.exchange.ftx;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectReader;
 import org.eurekaka.bricks.api.FutureExApi;
 import org.eurekaka.bricks.common.exception.ExApiException;
 import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.HttpUtils;
 import org.eurekaka.bricks.common.util.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Mac;
 import java.io.IOException;
@@ -18,18 +22,20 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
 public class FtxFutureApi implements FutureExApi {
+    private final static Logger logger = LoggerFactory.getLogger(FtxFutureApi.class);
 
     private final AccountConfig accountConfig;
     private final HttpClient httpClient;
     private final String subAccount;
+    private final ObjectReader reader;
+    private final ObjectReader reader2;
 
     public FtxFutureApi(AccountConfig accountConfig, HttpClient httpClient) {
         this.accountConfig = accountConfig;
@@ -37,6 +43,9 @@ public class FtxFutureApi implements FutureExApi {
 
         this.subAccount = accountConfig.getUid() == null ? null :
                 URLEncoder.encode(accountConfig.getUid(), StandardCharsets.UTF_8);
+
+        reader = Utils.mapper.reader().forType(FtxRestResult.class);
+        reader2 = Utils.mapper.reader().forType(new TypeReference<List<FtxRestResult>>() {});
     }
 
     @Override
@@ -301,7 +310,7 @@ public class FtxFutureApi implements FutureExApi {
             List<FundingValue> values = new ArrayList<>();
             for (FtxRestResult res : result.result) {
                 values.add(new FundingValue(res.future, accountConfig.getName(),
-                        -res.payment, res.rate, parseTimestamp(res.time)));
+                        -res.payment, res.rate, FtxUtils.parseTimestampString(res.time)));
             }
 
             return values;
@@ -350,13 +359,216 @@ public class FtxFutureApi implements FutureExApi {
         }
     }
 
+    @Override
+    public CompletableFuture<CurrentOrder> asyncMakeOrder(Order order) throws ExApiException {
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("side", order.getSide().name().toLowerCase());
+            params.put("market", order.getSymbol());
+            params.put("size", order.getSize());
+            params.put("clientId", order.getClientOrderId());
+
+            if (OrderType.MARKET.equals(order.getOrderType())) {
+                params.put("price", null);
+                params.put("type", "market");
+            } else {
+                params.put("price", order.getPrice());
+                params.put("type", "limit");
+                if (OrderType.LIMIT_GTX.equals(order.getOrderType())) {
+                    params.put("postOnly", true);
+                } else if (OrderType.LIMIT_IOC.equals(order.getOrderType())) {
+                    params.put("ioc", true);
+                }
+            }
+            HttpRequest request = generateSignedRequest("POST", "/api/orders",
+                    Utils.mapper.writeValueAsString(params));
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                System.out.println("make order: " + response.body());
+                if (response.statusCode() != 200) {
+                    logger.error("failed to make order: {}", response.body());
+                    return null;
+                }
+                try {
+                    FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                    if (!resp.success || resp.result == null) {
+                        logger.error("failed to make order, not success: {}", response.body());
+                        return null;
+                    }
+                    FtxRestResult result = reader.readValue(resp.result);
+                    return new CurrentOrder(result.id, order.getName(), order.getSymbol(), order.getAccount(),
+                            order.getSide(), order.getOrderType(), order.getSize(), order.getPrice(), result.filledSize,
+                            FtxUtils.getOrderStatus(result.status, result.size, result.filledSize),
+                            System.currentTimeMillis(), result.clientId);
+                } catch (Exception e) {
+                    throw new CompletionException("failed to parse response body: " + response.body(), e);
+                }
+            });
+        } catch (Exception e) {
+            throw new ExApiException("failed to make an order: " + order, e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<CurrentOrder> asyncGetOrder(String symbol, String clientOrderId) throws ExApiException {
+        try {
+            // 查询订单状态
+            HttpRequest request = generateSignedRequest("/api/orders/by_client_id/" + clientOrderId);
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                try {
+                    System.out.println("get order: " + response.body());
+                    FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                    if (!resp.success || resp.result == null) {
+                        logger.error("failed to get order: {}", response.body());
+                        return null;
+                    }
+                    FtxRestResult result = reader.readValue(resp.result);
+                    return new CurrentOrder(result.id, null, result.future, accountConfig.getName(),
+                            FtxUtils.getOrderSide(result.side),
+                            FtxUtils.getOrderType(result.type, result.ioc, result.postOnly),
+                            result.size, result.price, result.filledSize,
+                            FtxUtils.getOrderStatus(result.status, result.size, result.filledSize),
+                            FtxUtils.parseTimestampString(result.createdAt), result.clientId);
+                } catch (Exception e) {
+                    throw new CompletionException("failed to parse response body: " + response.body(), e);
+                }
+            });
+        } catch (Exception e) {
+            throw new ExApiException("failed to cancel order", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
+        try {
+            // 查询订单状态
+            HttpRequest request = generateSignedRequest("DELETE",
+                    "/api/orders/by_client_id/" + clientOrderId, null);
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
+                try {
+                    System.out.println("cancel order: " + response.body());
+                    FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                    if (!resp.success || resp.result == null) {
+                        if ("Order already closed".equals(resp.error)) {
+                            return;
+                        }
+                        logger.error("failed to cancel order: {}", response.body());
+                    }
+                } catch (Exception e) {
+                    throw new CompletionException("failed to parse response body: " + response.body(), e);
+                }
+            });
+        } catch (Exception e) {
+            throw new ExApiException("failed to cancel order", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<List<CurrentOrder>> asyncGetCurrentOrders(String symbol) throws ExApiException {
+        try {
+            HttpRequest request = generateSignedRequest("/api/orders?market=" + symbol);
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                try {
+                    System.out.println("get orders: " + response.body());
+                    FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                    if (!resp.success || resp.result == null) {
+                        logger.error("failed to get current orders: {}", response.body());
+                        return null;
+                    }
+                    List<FtxRestResult> results = reader2.readValue(resp.result);
+                    List<CurrentOrder> orders = new ArrayList<>();
+                    for (FtxRestResult result : results) {
+                        orders.add(new CurrentOrder(result.id, null, result.future, accountConfig.getName(),
+                                FtxUtils.getOrderSide(result.side),
+                                FtxUtils.getOrderType(result.type, result.ioc, result.postOnly),
+                                result.size, result.price, result.filledSize,
+                                FtxUtils.getOrderStatus(result.status, result.size, result.filledSize),
+                                FtxUtils.parseTimestampString(result.createdAt), result.clientId));
+                    }
+                    return orders;
+                } catch (Exception e) {
+                    throw new CompletionException("failed to parse response body: " + response.body(), e);
+                }
+            });
+        } catch (Exception e) {
+            throw new ExApiException("failed to get current orders", e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<List<AccountValue>> asyncGetAccountValues() throws ExApiException {
+        HttpRequest request = generateSignedRequest("/api/wallet/balances");
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+            try {
+                FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                if (!resp.success || resp.result == null) {
+                    logger.error("failed to get account values: {}", response.body());
+                    return Collections.emptyList();
+                }
+                List<FtxRestResult> results = reader2.readValue(resp.result);
+                List<AccountValue> accountValues = new ArrayList<>();
+                for (FtxRestResult res : results) {
+//                System.out.println("coin: " + res.coin + ", free: " + res.free + ", total: " + res.total);
+                    // 此处无法计算获取 unrealized pnl
+                    accountValues.add(new AccountValue(res.coin,
+                            accountConfig.getName(), res.total, res.total, res.free));
+                }
+                return accountValues;
+            } catch (Exception e) {
+                throw new CompletionException("failed to parse response body: " + response.body(), e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<List<PositionValue>> asyncGetPositionValues() throws ExApiException {
+        HttpRequest request = generateSignedRequest("/api/positions?showAvgPrice=true");
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+            try {
+                FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                if (!resp.success || resp.result == null) {
+                    logger.error("failed to get current positions: {}", response.body());
+                    return Collections.emptyList();
+                }
+                List<FtxRestResult> results = reader2.readValue(resp.result);
+                List<PositionValue> positions = new ArrayList<>();
+                for (FtxRestResult res : results) {
+                    long quantity = Math.round(res.netSize * res.entryPrice);
+                    positions.add(new PositionValue(res.future, accountConfig.getName(),
+                            res.netSize, res.entryPrice, quantity,
+                            res.recentBreakEvenPrice, res.recentPnl));
+                }
+                return positions;
+            } catch (Exception e) {
+                throw new CompletionException("failed to parse response body: " + response.body(), e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Double> asyncGetFundingRate(String symbol) throws ExApiException {
+        HttpRequest request = generateSignedRequest("/api/futures/" + symbol + "/stats");
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+            try {
+                FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                if (!resp.success || resp.result == null) {
+                    logger.error("failed to get funding rate: {}", response.body());
+                    return 0D;
+                }
+                FtxRestResult result = reader.readValue(resp.result);
+                return result.nextFundingRate;
+            } catch (Exception e) {
+                throw new CompletionException("failed to parse response body: " + response.body(), e);
+            }
+        });
+    }
+
     /**
      * 生成签名后的请求
      * @param path 请求路径，可以此处拼接参数
      * @return 签名后的请求
-     * @throws Exception 生成失败
+     * @throws ExApiException 生成失败
      */
-    private HttpRequest generateSignedRequest(String path) throws Exception {
+    private HttpRequest generateSignedRequest(String path) throws ExApiException {
         return generateSignedRequest("GET", path, null);
     }
 
@@ -367,33 +579,33 @@ public class FtxFutureApi implements FutureExApi {
      * @return http 请求
      */
     private HttpRequest generateSignedRequest(String method, String path,
-                                              String body) throws Exception {
-        long currentTime = System.currentTimeMillis();
-        String signString = currentTime + method + path;
-        if (body != null) {
-            signString += body;
-        }
-        Mac sha256Mac = Utils.initialHMac(accountConfig.getAuthSecret(), "HmacSHA256");
-        String signature = Utils.encodeHexString(sha256Mac.doFinal(signString.getBytes()));
+                                              String body) throws ExApiException {
+        try {
+            long currentTime = System.currentTimeMillis();
+            String signString = currentTime + method + path;
+            if (body != null) {
+                signString += body;
+            }
+            Mac sha256Mac = Utils.initialHMac(accountConfig.getAuthSecret(), "HmacSHA256");
+            String signature = Utils.encodeHexString(sha256Mac.doFinal(signString.getBytes()));
 
-        HttpRequest.Builder builder = HttpRequest.newBuilder(new URI(accountConfig.getUrl() + path));
-        builder.header("FTX-KEY", accountConfig.getAuthKey())
-                .header("FTX-SIGN", signature)
-                .header("FTX-TS", String.valueOf(currentTime))
-                .header("Content-Type", "application/json");
-        if (this.subAccount != null) {
-            builder.header("FTX-SUBACCOUNT", this.subAccount);
+            HttpRequest.Builder builder = HttpRequest.newBuilder(new URI(accountConfig.getUrl() + path));
+            builder.header("FTX-KEY", accountConfig.getAuthKey())
+                    .header("FTX-SIGN", signature)
+                    .header("FTX-TS", String.valueOf(currentTime))
+                    .header("Content-Type", "application/json");
+            if (this.subAccount != null) {
+                builder.header("FTX-SUBACCOUNT", this.subAccount);
+            }
+            if (body != null) {
+                builder.method(method, HttpRequest.BodyPublishers.ofString(body));
+            } else {
+                builder.method(method, HttpRequest.BodyPublishers.noBody());
+            }
+            return builder.build();
+        } catch (Exception e) {
+            throw new ExApiException("failed to generate signed request: " + path, e);
         }
-        if (body != null) {
-            builder.method(method, HttpRequest.BodyPublishers.ofString(body));
-        } else {
-            builder.method(method, HttpRequest.BodyPublishers.noBody());
-        }
-        return builder.build();
-    }
-
-    private long parseTimestamp(String timeString) {
-        return ZonedDateTime.parse(timeString, DateTimeFormatter.ISO_DATE_TIME).toEpochSecond() * 1000;
     }
 
     @Override
@@ -463,7 +675,7 @@ public class FtxFutureApi implements FutureExApi {
                 throw new ExApiException(response.body());
             }
             for (FtxRestResult res : result.result) {
-                records.add(new AccountAssetRecord(parseTimestamp(res.time),
+                records.add(new AccountAssetRecord(FtxUtils.parseTimestampString(res.time),
                         res.coin, res.size, res.status, null));
             }
             return records;
@@ -500,57 +712,6 @@ public class FtxFutureApi implements FutureExApi {
         public String result;
 
         public FtxRestV3() {
-        }
-    }
-
-    static class FtxRestResult {
-        // balance
-        public String coin;
-        public double free;
-        public double total;
-
-        // account
-        public double collateral;
-        public double freeCollateral;
-        public double marginFraction;
-        public double totalAccountValue;
-        public int leverage;
-        public List<FtxRestResultPos> positions;
-
-        public String name;
-        public double priceIncrement;
-        public double sizeIncrement;
-
-        public String id;
-        public String status;
-
-        public String future;
-        public double netSize;
-        public double openSize;
-        public double collateralUsed;
-        public double initialMarginRequirement;
-        public double maintenanceMarginRequirement;
-
-        // 实际为标记价格
-        public double entryPrice;
-        public double recentBreakEvenPrice;
-        public double recentPnl;
-
-        public String side;
-        public String type;
-        public double price;
-        public double filledSize;
-        public double size;
-
-        public double rate;
-        public double payment;
-        public String time;
-
-        public double nextFundingRate;
-
-        public String address;
-
-        public FtxRestResult() {
         }
     }
 

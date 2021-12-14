@@ -105,7 +105,6 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 //            }
         } else if ("futures.book_ticker".equals(resp.channel) && "update".equals(resp.event)) {
             GateWebSocketResultV2 result = reader2.readValue(resp.result);
-//            logger.info("{}: book ticker message: {}", System.currentTimeMillis() - start, message);
             if (result.bidPrice > 0 && result.bidSize != 0) {
                 accountStatus.updateBidOrderBookTicker(result.contract,
                         result.bidPrice, api.getSize(result.contract, result.bidSize));
@@ -114,6 +113,18 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 accountStatus.updateAskOrderBookTicker(result.contract,
                         result.askPrice, api.getSize(result.contract, result.askSize));
             }
+//            long timer = System.currentTimeMillis() - start;
+//            double bid = 0;
+//            double ask = 0;
+//            TreeMap<Double, Double> bidMap = accountStatus.getBidOrderBooks().get(result.contract);
+//            if (bidMap != null && !bidMap.isEmpty()) {
+//                bid = bidMap.firstKey();
+//            }
+//            TreeMap<Double, Double> askMap = accountStatus.getAskOrderBooks().get(result.contract);
+//            if (askMap != null && !askMap.isEmpty()) {
+//                ask = askMap.firstKey();
+//            }
+//            logger.info("{}: bid: {}, ask: {}, book ticker message: {}", timer, bid, ask, message);
         } else if ("futures.usertrades".equals(resp.channel) && "update".equals(resp.event)) {
             List<GateWebSocketResult> results = reader1.readValue(resp.result);
             for (GateWebSocketResult result : results) {

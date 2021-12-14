@@ -61,6 +61,7 @@ public class ExAction<T> {
 
         // 转换统一计价货币参数
         GET_MARK_USDT,
+        GET_CURRENCY_RATE,
 
         // futures
         // 返回标的的标记价格（指数价格？）

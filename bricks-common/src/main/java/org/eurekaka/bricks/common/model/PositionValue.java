@@ -36,6 +36,7 @@ public class PositionValue {
         this.quantity = quantity;
         this.entryPrice = entryPrice;
         this.unPnl = unPnl;
+        this.time = System.currentTimeMillis();
     }
 
 //    public PositionValue(String symbol, String account, double size, double price, long quantity) {

@@ -36,7 +36,11 @@ public class AccountStatus {
     private final Map<String, LinkedList<OrderBookValue>> orderBookValues;
 
     // mark usdt，转换统一计价单位，平台交易对可能以USDT计价，也可能以BUSD计价
+    // use currencyRate instead
+    @Deprecated
     private double markUsdt;
+    // 通货转换率
+    private double currencyRate;
 
     // queue 若设置可以直接推送消息到外部，必须通过set设置，否则不生效
     private Queue<Notification> notificationQueue;
@@ -49,6 +53,7 @@ public class AccountStatus {
         this.bidOrderBooks = new ConcurrentHashMap<>();
         this.askOrderBooks = new ConcurrentHashMap<>();
         this.markUsdt = 1D;
+        this.currencyRate = 0;
         this.balances = new ConcurrentHashMap<>();
         this.klineValues = new ConcurrentHashMap<>();
         this.orderBookValues = new ConcurrentHashMap<>();
@@ -97,6 +102,14 @@ public class AccountStatus {
 
     public double getMarkUsdt() {
         return markUsdt == 0D ? 1D : markUsdt;
+    }
+
+    public double getCurrencyRate() {
+        return currencyRate;
+    }
+
+    public void setCurrencyRate(double currencyRate) {
+        this.currencyRate = currencyRate;
     }
 
     public Map<String, AccountValue> getBalances() {

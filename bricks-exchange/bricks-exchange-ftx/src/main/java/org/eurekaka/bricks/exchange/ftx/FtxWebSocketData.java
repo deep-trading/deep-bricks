@@ -16,9 +16,15 @@ public class FtxWebSocketData {
     public String type;
     public double avgFillPrice;
     public double filledSize;
+    public String time;
+    public boolean ioc;
+    public boolean postOnly;
+    public String status;
 
     public double bid;
+    public double bidSize;
     public double ask;
+    public double askSize;
     public double last;
 
     public String action;

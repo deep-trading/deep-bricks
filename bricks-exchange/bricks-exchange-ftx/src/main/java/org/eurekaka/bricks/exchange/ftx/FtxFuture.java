@@ -4,7 +4,10 @@ import org.eurekaka.bricks.api.AbstractFutureExchange;
 import org.eurekaka.bricks.common.exception.ExApiException;
 import org.eurekaka.bricks.common.exception.ExchangeException;
 import org.eurekaka.bricks.common.model.*;
+import org.eurekaka.bricks.common.util.Utils;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -12,15 +15,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FtxFuture extends AbstractFutureExchange {
-
     private final long fetchInterval;
+    private final String currencyRateSymbol;
 
     public FtxFuture(AccountConfig accountConfig) {
         super(accountConfig, new FutureAccountStatus());
 
         // 时间间隔
         fetchInterval = Long.parseLong(
-                accountConfig.getProperty("fetch_interval", "5000"));
+                accountConfig.getProperty("fetch_interval", "30000"));
+        currencyRateSymbol = accountConfig.getProperty("currency_rate_symbol", "USDT/USD");
 
         httpClient.executor().get().execute(new FtxFetcher());
     }
@@ -29,20 +33,26 @@ public class FtxFuture extends AbstractFutureExchange {
     protected void postStart() throws ExchangeException {
         super.postStart();
 
-        webSocket.sendText("{\"op\": \"subscribe\", \"channel\": \"fills\"}", true);
-        webSocket.sendText("{\"op\": \"subscribe\", \"channel\": \"orders\"}", true);
-        webSocket.sendText("{\"op\":\"subscribe\",\"channel\":\"ticker\",\"market\":\"USDT-PERP\"}", true);
-
         try {
-            // 更新账户余额
-            for (AccountValue value : api.getAccountValue()) {
-                accountStatus.getBalances().put(value.asset, value);
-            }
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("subscribe", "fills")), true);
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("subscribe", "orders")), true);
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("subscribe", "ticker", currencyRateSymbol)), true);
 
-            // 更新仓位
-            for (PositionValue value : api.getPositionValue(null)) {
-                accountStatus.getPositionValues().put(value.getSymbol(), value);
-            }
+            // 更新账户余额
+            api.asyncGetAccountValues().thenAccept(accountValues -> {
+                for (AccountValue accountValue : accountValues) {
+                    accountStatus.getBalances().put(accountValue.asset, accountValue);
+                }
+            });
+
+            api.asyncGetPositionValues().thenAccept(positionValues -> {
+                for (PositionValue positionValue : positionValues) {
+                    accountStatus.getPositionValues().put(positionValue.getSymbol(), positionValue);
+                }
+            });
         } catch (Exception e) {
             throw new ExchangeException("failed to start ftx future exchange", e);
         }
@@ -50,24 +60,27 @@ public class FtxFuture extends AbstractFutureExchange {
 
     @Override
     protected void sendSub(String symbol) throws ExApiException {
-        webSocket.sendText("{\"op\": \"subscribe\", \"channel\": " +
-                "\"ticker\", \"market\": \"" + symbol + "\"}", true);
-        webSocket.sendText("{\"op\": \"subscribe\", \"channel\": " +
-                "\"orderbook\", \"market\": \"" + symbol + "\"}", true);
         try {
             updateFundingRate(symbol);
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            logger.error("failed to get funding rate while waiting.");
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("subscribe", "ticker", symbol)), true);
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("subscribe", "orderbook", symbol)), true);
+        } catch (Exception e) {
+            throw new ExApiException("failed to send sub for: " + symbol, e);
         }
     }
 
     @Override
     protected void sendUnsub(String symbol) throws ExApiException {
-        webSocket.sendText("{\"op\": \"unsubscribe\", " +
-                "\"channel\": \"ticker\", \"market\": \"" + symbol + "\"}", true);
-        webSocket.sendText("{\"op\": \"unsubscribe\", " +
-                "\"channel\": \"orderbook\", \"market\": \"" + symbol + "\"}", true);
+        try {
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("unsubscribe", "ticker", symbol)), true);
+            webSocket.sendText(Utils.mapper.writeValueAsString(
+                    new FtxWebSocketMsg("unsubscribe", "orderbook", symbol)), true);
+        } catch (Exception e) {
+            throw new ExApiException("failed to send unsub for: " + symbol, e);
+        }
     }
 
 
@@ -108,9 +121,18 @@ public class FtxFuture extends AbstractFutureExchange {
     }
 
     private void updateFundingRate(String symbol) throws ExApiException {
-        accountStatus.getFundingRates().put(symbol, 8 * api.getFundingRate(symbol));
+        api.asyncGetFundingRate(symbol).thenAccept(rate -> {
+            accountStatus.getFundingRates().put(symbol, 8 * rate);
+        });
     }
 
+    @Override
+    protected void sendPingBuffer() {
+        super.sendPingBuffer();
+        if (webSocket != null) {
+            webSocket.sendText(FtxUtils.FTX_PING_BUFFER, true);
+        }
+    }
 
     private class FtxFetcher implements Runnable {
         private final AtomicBoolean exited;
@@ -133,15 +155,17 @@ public class FtxFuture extends AbstractFutureExchange {
                             Thread.sleep(100);
                         }
 
-                        // 更新账户余额
-                        for (AccountValue value : api.getAccountValue()) {
-                            accountStatus.getBalances().put(value.asset, value);
-                        }
+                        api.asyncGetAccountValues().thenAccept(accountValues -> {
+                            for (AccountValue accountValue : accountValues) {
+                                accountStatus.getBalances().put(accountValue.asset, accountValue);
+                            }
+                        });
 
-                        // 更新仓位
-                        for (PositionValue value : api.getPositionValue(null)) {
-                            accountStatus.getPositionValues().put(value.getSymbol(), value);
-                        }
+                        api.asyncGetPositionValues().thenAccept(positionValues -> {
+                            for (PositionValue positionValue : positionValues) {
+                                accountStatus.getPositionValues().put(positionValue.getSymbol(), positionValue);
+                            }
+                        });
 
                         nextFetchTime = currentTime / fetchInterval * fetchInterval + fetchInterval;
                     }

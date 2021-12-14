@@ -41,20 +41,20 @@ public class FtxFutureTest {
 
         DepthPricePair depthPricePair = new DepthPricePair(name, symbol, 100);
         SymbolPair symbolPair = new SymbolPair(name, symbol);
-//
-//        int count = 0;
-//        while (count++ < 500) {
+
+        int count = 0;
+        while (count++ < 500) {
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_MARK_USDT)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_NET_VALUES)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITIONS)));
-//            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITION, symbolPair)));
+            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_POSITION, symbolPair)));
 //            System.out.println(exchange.process(new ExAction<>(ExAction.ActionType.GET_FUNDING_RATE, symbolPair)));
-//            System.out.println(exchange.process(new ExAction<>(
-//                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
-//            System.out.println(exchange.process(new ExAction<>(
-//                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
-//            Thread.sleep(500);
-//        }
+            System.out.println(exchange.process(new ExAction<>(
+                    ExAction.ActionType.GET_BID_DEPTH_PRICE, depthPricePair)));
+            System.out.println(exchange.process(new ExAction<>(
+                    ExAction.ActionType.GET_ASK_DEPTH_PRICE, depthPricePair)));
+            Thread.sleep(1000);
+        }
 
         Order order = new Order("n1", name, symbol,
                 OrderSide.BUY, OrderType.MARKET, 1, 3.5, 6);
