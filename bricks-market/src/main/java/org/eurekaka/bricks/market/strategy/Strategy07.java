@@ -317,8 +317,7 @@ public class Strategy07 implements Strategy {
 
     private AsyncStateOrder updateOrder(Info0 info, Info0 other, OrderSide side,
                               AsyncStateOrder currentOrder, long posQuantity) throws StrategyException {
-        if (currentOrder != null && (currentOrder.getState().equals(OrderState.SUBMITTING) ||
-                currentOrder.getState().equals(OrderState.CANCELLING))) {
+        if (currentOrder != null && (currentOrder.getState().equals(OrderState.CANCELLING))) {
             return null;
         }
 
@@ -327,7 +326,8 @@ public class Strategy07 implements Strategy {
 
         // 始终保证第一时间取消价格错误的订单
         // 异步取消订单，等待下个周期再下单
-        if (currentOrder != null && currentOrder.getState().equals(OrderState.SUBMITTED)) {
+        if (currentOrder != null && (currentOrder.getState().equals(OrderState.SUBMITTED) ||
+                currentOrder.getState().equals(OrderState.SUBMITTING))) {
             // 检查是否需要撤单
             if (side.equals(OrderSide.BUY)) {
                 double baseOrderCancelRate = strategyConfig.getDouble("bid_cancel_rate", 0.001);
@@ -372,7 +372,8 @@ public class Strategy07 implements Strategy {
                 order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
-                    if (newOrder != null && OrderStatus.NEW.equals(newOrder.getStatus())) {
+                    if (newOrder != null && OrderStatus.NEW.equals(newOrder.getStatus()) &&
+                            order.getState().equals(OrderState.SUBMITTING)) {
                         order.setState(OrderState.SUBMITTED);
                     } else {
                         order.setState(OrderState.CANCELLED);

@@ -27,7 +27,7 @@ public class AsyncStateOrder extends Order {
         return state;
     }
 
-    public void setState(OrderState state) {
+    public synchronized void setState(OrderState state) {
         this.state = state;
     }
 
