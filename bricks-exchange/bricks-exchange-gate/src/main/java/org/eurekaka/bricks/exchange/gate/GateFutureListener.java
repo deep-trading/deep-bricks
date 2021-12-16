@@ -53,17 +53,38 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 }
                 accountStatus.getFundingRates().put(result.contract, result.funding_rate);
             }
-//        } else if ("futures.order_book".equals(resp.channel) && "all".equals(resp.event)) {
-//            GateWebSocketResultV3 result = reader3.readValue(resp.result);
-//            List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
-//            for (GatePriceSizePair bid : result.bids) {
-//                bidPairs.add(new OrderBookValue.PriceSizePair(bid.price, api.getSize(result.symbol, bid.size)));
+        } else if ("futures.order_book".equals(resp.channel) && "all".equals(resp.event)) {
+            GateWebSocketResultV3 result = reader3.readValue(resp.result);
+            if (result.bids != null && result.bids.size() == 1) {
+                GatePriceSizePair bid = result.bids.get(0);
+                accountStatus.updateBidOrderBookTicker(result.symbol, bid.price, bid.size);
+            }
+            if (result.asks != null && result.asks.size() == 1) {
+                GatePriceSizePair ask = result.asks.get(0);
+                accountStatus.updateAskOrderBookTicker(result.symbol, ask.price, ask.size);
+            }
+//            long timer = System.currentTimeMillis() - start;
+//            double bid = 0;
+//            double ask = 0;
+//            TreeMap<Double, Double> bidMap = accountStatus.getBidOrderBooks().get(result.symbol);
+//            if (bidMap != null && !bidMap.isEmpty()) {
+//                bid = bidMap.firstKey();
 //            }
-//            List<OrderBookValue.PriceSizePair> askPairs = new ArrayList<>();
-//            for (GatePriceSizePair ask : result.asks) {
-//                askPairs.add(new OrderBookValue.PriceSizePair(ask.price, api.getSize(result.symbol, ask.size)));
+//            TreeMap<Double, Double> askMap = accountStatus.getAskOrderBooks().get(result.symbol);
+//            if (askMap != null && !askMap.isEmpty()) {
+//                ask = askMap.firstKey();
 //            }
-//            accountStatus.buildOrderBook(result.symbol, bidPairs, askPairs);
+//            logger.info("{}: bid: {}, ask: {}, order book message: {}", timer, bid, ask, message);
+//        } else if ("futures.trades".equals(resp.channel) && "update".equals(resp.event)) {
+//            List<GateWebSocketResult> results = reader1.readValue(resp.result);
+//            for (GateWebSocketResult result : results) {
+//                if (result.size > 0) {
+//                    // 买单，则卖一可能已经没有
+//                    accountStatus.updateAskOrderBookTicker(result.contract, result.price, 0);
+//                } else {
+//                    accountStatus.updateBidOrderBookTicker(result.contract, result.price, 0);
+//                }
+//            }
         } else if ("futures.order_book_update".equals(resp.channel) && "update".equals(resp.event)) {
             GateWebSocketResultV3 result = reader3.readValue(resp.result);
             List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
@@ -95,7 +116,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 //            if (askMap != null && !askMap.isEmpty()) {
 //                ask = askMap.firstKey();
 //            }
-//            logger.info("{}: bid: {}, ask: {}, depth update message: {}", timer, bid, ask, message);
+//            logger.info("{}: bid: {}, ask: {}, order book update message: {}", timer, bid, ask, message);
 //            if (timer > 100000) {
 //                start = start + timer;
 //                logger.info("order book value: {}", orderBookValue);

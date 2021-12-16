@@ -235,21 +235,23 @@ public class AccountStatus {
      * @param key 当前挂单价格
      * @param value 当前挂单数量
      */
-    private <K, T> void updateOrderBookTicker(Map<String, TreeMap<K, T>> source, String symbol, K key, T value) {
+    private void updateOrderBookTicker(Map<String, TreeMap<Double, Double>> source, String symbol, double key, double value) {
         if (source.containsKey(symbol)) {
-            TreeMap<K, T> map = source.get(symbol);
+            TreeMap<Double, Double> map = source.get(symbol);
             if (map.isEmpty()) {
                 return;
             }
-            if (map.comparator().compare(map.firstKey(), key) >= 0) {
+            if (map.comparator().compare(map.firstKey(), key) > 0 ||
+                    map.comparator().compare(map.firstKey(), key) == 0 && value > 0) {
                 return;
             }
 
             synchronized (source.get(symbol)) {
-                Iterator<Map.Entry<K, T>> iterator = map.entrySet().iterator();
+                Iterator<Map.Entry<Double, Double>> iterator = map.entrySet().iterator();
                 while (iterator.hasNext()) {
-                    Map.Entry<K, T> it = iterator.next();
-                    if (map.comparator().compare(it.getKey(), key) < 0) {
+                    Map.Entry<Double, Double> it = iterator.next();
+                    if (map.comparator().compare(it.getKey(), key) < 0 ||
+                            map.comparator().compare(map.firstKey(), key) == 0 && value == 0) {
 //                        System.out.println("remove key: " + it.getKey() + ", current: " + key);
                         iterator.remove();
                     } else {
