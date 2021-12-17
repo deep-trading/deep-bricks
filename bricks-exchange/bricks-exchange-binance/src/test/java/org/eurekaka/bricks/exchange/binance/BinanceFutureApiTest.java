@@ -74,8 +74,8 @@ public class BinanceFutureApiTest {
         // 5 async make order test
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.MARKET, 2, 4.1, 9));
-        testAsyncOrderApi(api, new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.02, 9));
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.02, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 4.1, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,

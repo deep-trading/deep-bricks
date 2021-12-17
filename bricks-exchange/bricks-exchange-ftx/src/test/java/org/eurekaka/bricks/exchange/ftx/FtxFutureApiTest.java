@@ -68,8 +68,9 @@ public class FtxFutureApiTest {
         // 4. 测试异步订单接口
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.MARKET, 1, 4.1, 9));
-        testAsyncOrderApi(api, new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.41, 9));
+//        testAsyncOrderApi(api, new Order("n1", name, symbol,
+//                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.41, 9));
+        System.out.println("order: " + api.asyncCancelOrder(symbol, "id1").get());
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.LIMIT_GTC, 1, 3.9, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,

@@ -448,6 +448,7 @@ public class FtxFutureApi implements FutureExApi {
                         FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
                         if (!resp.success || resp.result == null) {
                             if ("Order already closed".equals(resp.error) ||
+                                    "Order not found".equals(resp.error) ||
                                     "Order already queued for cancellation".equals(resp.error)) {
                                 return true;
                             }

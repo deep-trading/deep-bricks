@@ -375,8 +375,15 @@ public class BinanceFutureApi implements FutureExApi {
                     .thenApply(response -> {
 //                        System.out.println(response.statusCode() + ", " + response.body());
                         if (response.statusCode() != 200) {
-                            logger.info("failed to cancel order, symbol: {}, client order id: {}, response: {}",
-                                    symbol, clientOrderId, response.body());
+                            try {
+                                BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
+                                if (result.code != -2011 && result.code != -2013) {
+                                    return true;
+                                }
+                            } catch (JsonProcessingException e) {
+                                logger.info("failed to cancel order, symbol: {}, client order id: {}, response: {}",
+                                        symbol, clientOrderId, response.body());
+                            }
                             return false;
                         }
                         return true;

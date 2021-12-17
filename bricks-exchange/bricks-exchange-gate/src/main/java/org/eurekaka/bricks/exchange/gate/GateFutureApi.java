@@ -337,7 +337,17 @@ public class GateFutureApi implements FutureExApi {
                     .thenApply(response -> {
 //                        System.out.println(response.statusCode() + ", " + response.body());
                         if (response.statusCode() != 200) {
-                            logger.info("failed to cancel order, symbol: {}, client order id: {}, response: {}",
+                            try {
+                                GateOrder result = Utils.mapper.readValue(response.body(), GateOrder.class);
+                                if ("ORDER_NOT_FOUND".equals(result.label) ||
+                                        "ORDER_CLOSED".equals(result.label) ||
+                                        "ORDER_CANCELLED".equals(result.label)) {
+                                    return true;
+                                }
+                            } catch (Exception e) {
+                                logger.error("failed to parse response body: " + response.body(), e);
+                            }
+                            logger.error("failed to cancel order, symbol: {}, client order id: {}, response: {}",
                                     symbol, clientOrderId, response.body());
                             return false;
                         }
