@@ -329,22 +329,19 @@ public class GateFutureApi implements FutureExApi {
     }
 
     @Override
-    public CompletableFuture<Void> asyncCancelOrder(String symbol, String orderId) throws ExApiException {
+    public CompletableFuture<Boolean> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
         try {
             HttpRequest request = generateSignedRequest("DELETE",
-                    BASE_PREFIX + "/orders/t-" + orderId, null);
+                    BASE_PREFIX + "/orders/t-" + clientOrderId, null);
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(response -> {
+                    .thenApply(response -> {
+//                        System.out.println(response.statusCode() + ", " + response.body());
                         if (response.statusCode() != 200) {
-                            try {
-                                GateRespV1 result = Utils.mapper.readValue(response.body(), GateRespV1.class);
-                                if (!"ORDER_NOT_FOUND".equals(result.label)) {
-                                    throw new CompletionException(new ExApiException("failed to cancel order: " + response.body()));
-                                }
-                            } catch (JsonProcessingException e) {
-                                throw new CompletionException("failed to parse response body: " + response.body(), e);
-                            }
+                            logger.info("failed to cancel order, symbol: {}, client order id: {}, response: {}",
+                                    symbol, clientOrderId, response.body());
+                            return false;
                         }
+                        return true;
                     });
         } catch (Exception e) {
             throw new ExApiException("failed to cancel order", e);

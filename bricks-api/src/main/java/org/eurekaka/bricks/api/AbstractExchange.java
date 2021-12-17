@@ -457,7 +457,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
         return new ExMessage<>(ExMessage.ExMsgType.RIGHT, currentOrder);
     }
 
-    protected ExMessage<CompletableFuture<Void>> cancelOrderV2(ActionPair pair) throws ExApiException {
+    protected ExMessage<CompletableFuture<Boolean>> cancelOrderV2(ActionPair pair) throws ExApiException {
         if (fakeOrder) {
             return new ExMessage<>(ExMessage.ExMsgType.RIGHT, CompletableFuture.completedFuture(null));
         }

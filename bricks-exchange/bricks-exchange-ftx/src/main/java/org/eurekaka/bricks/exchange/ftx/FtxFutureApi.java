@@ -383,7 +383,6 @@ public class FtxFutureApi implements FutureExApi {
             HttpRequest request = generateSignedRequest("POST", "/api/orders",
                     Utils.mapper.writeValueAsString(params));
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
-                System.out.println("make order: " + response.body());
                 if (response.statusCode() != 200) {
                     logger.error("failed to make order: {}", response.body());
                     return null;
@@ -415,7 +414,6 @@ public class FtxFutureApi implements FutureExApi {
             HttpRequest request = generateSignedRequest("/api/orders/by_client_id/" + clientOrderId);
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
                 try {
-                    System.out.println("get order: " + response.body());
                     FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
                     if (!resp.success || resp.result == null) {
                         logger.error("failed to get order: {}", response.body());
@@ -438,21 +436,27 @@ public class FtxFutureApi implements FutureExApi {
     }
 
     @Override
-    public CompletableFuture<Void> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
+    public CompletableFuture<Boolean> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
         try {
             // 查询订单状态
             HttpRequest request = generateSignedRequest("DELETE",
                     "/api/orders/by_client_id/" + clientOrderId, null);
-            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
                 try {
-                    System.out.println("cancel order: " + response.body());
-                    FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
-                    if (!resp.success || resp.result == null) {
-                        if ("Order already closed".equals(resp.error)) {
-                            return;
+//                    System.out.println(response.statusCode() + ", " + response.body());
+                    if (response.statusCode() != 200) {
+                        FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
+                        if (!resp.success || resp.result == null) {
+                            if ("Order already closed".equals(resp.error) ||
+                                    "Order already queued for cancellation".equals(resp.error)) {
+                                return true;
+                            }
                         }
-                        logger.error("failed to cancel order: {}", response.body());
+                        logger.info("failed to cancel order, symbol: {}, client order id: {}, response: {}",
+                                symbol, clientOrderId, response.body());
+                        return false;
                     }
+                    return true;
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
                 }
@@ -468,7 +472,6 @@ public class FtxFutureApi implements FutureExApi {
             HttpRequest request = generateSignedRequest("/api/orders?market=" + symbol);
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
                 try {
-                    System.out.println("get orders: " + response.body());
                     FtxRestResp resp = Utils.mapper.readValue(response.body(), FtxRestResp.class);
                     if (!resp.success || resp.result == null) {
                         logger.error("failed to get current orders: {}", response.body());

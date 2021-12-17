@@ -83,8 +83,9 @@ public class FtxFutureApiTest {
         order.setClientOrderId(clientOrderId);
         System.out.println("async make order: " + api.asyncMakeOrder(order).get());
         System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
-        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
         System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());
+        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
+        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
     }
 
 }

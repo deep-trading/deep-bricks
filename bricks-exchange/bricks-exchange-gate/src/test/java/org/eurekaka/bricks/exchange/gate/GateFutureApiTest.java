@@ -28,7 +28,7 @@ public class GateFutureApiTest {
         String symbol = "EOS_USDT";
 
         // 1. 测试查询接口数据
-        System.out.println(api.asyncGetOrderBook(symbol, 100).get());
+//        System.out.println(api.asyncGetOrderBook(symbol, 100).get());
 //        System.out.println(api.getAuthMessage());
 //        System.out.println(api.getPositionValue(null));
 //        System.out.println(api.getExchangeInfos());
@@ -60,7 +60,7 @@ public class GateFutureApiTest {
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.MARKET, 1, 4.1, 9));
         testAsyncOrderApi(api, new Order("n1", name, symbol,
-                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.48, 9));
+                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.08, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 3.9, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
@@ -75,6 +75,7 @@ public class GateFutureApiTest {
         System.out.println("async make order: " + api.asyncMakeOrder(order).get());
         System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
         System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());
+        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
         System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
     }
 

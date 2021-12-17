@@ -8,6 +8,8 @@ import org.eurekaka.bricks.common.exception.ExApiException;
 import org.eurekaka.bricks.common.model.*;
 import org.eurekaka.bricks.common.util.HttpUtils;
 import org.eurekaka.bricks.common.util.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Mac;
 import java.io.IOException;
@@ -22,6 +24,8 @@ import java.util.concurrent.CompletionException;
 import static org.eurekaka.bricks.common.util.Utils.PRECISION;
 
 public class BinanceFutureApi implements FutureExApi {
+    private final static Logger logger = LoggerFactory.getLogger(BinanceFutureApi.class);
+
     private final HttpClient httpClient;
     private final AccountConfig accountConfig;
 
@@ -248,14 +252,17 @@ public class BinanceFutureApi implements FutureExApi {
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenApply(response -> {
                         try {
-                            BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
-                            return new CurrentOrder(result.orderId, order.getName(), order.getSymbol(),
-                                    accountConfig.getName(), order.getSide(), order.getOrderType(),
-                                    order.getSize(), result.price, result.executedQty,
-                                    BinanceUtils.getStatus(result.status), result.updateTime, result.clientOrderId);
+                            if (response.statusCode() == 200) {
+                                BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
+                                return new CurrentOrder(result.orderId, order.getName(), order.getSymbol(),
+                                        accountConfig.getName(), order.getSide(), order.getOrderType(),
+                                        order.getSize(), result.price, result.executedQty,
+                                        BinanceUtils.getStatus(result.status), result.updateTime, result.clientOrderId);
+                            }
                         } catch (Exception e) {
                             throw new CompletionException("failed to parse body: " + response.body(), e);
                         }
+                        return null;
                     });
         } catch (Exception e) {
             throw new ExApiException("failed to make order.", e);
@@ -354,7 +361,7 @@ public class BinanceFutureApi implements FutureExApi {
     }
 
     @Override
-    public CompletableFuture<Void> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
+    public CompletableFuture<Boolean> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
         try {
             Map<String, String> params = new HashMap<>();
             params.put("symbol", symbol);
@@ -365,18 +372,14 @@ public class BinanceFutureApi implements FutureExApi {
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
                     .build();
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(response -> {
+                    .thenApply(response -> {
+//                        System.out.println(response.statusCode() + ", " + response.body());
                         if (response.statusCode() != 200) {
-                            try {
-                                BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
-                                if (result.code != -2011) {
-                                    throw new CompletionException(
-                                            new ExApiException("failed to cancel order: " + response.body()));
-                                }
-                            } catch (Exception e) {
-                                throw new CompletionException("failed to parse response: " + response.body(), e);
-                            }
+                            logger.info("failed to cancel order, symbol: {}, client order id: {}, response: {}",
+                                    symbol, clientOrderId, response.body());
+                            return false;
                         }
+                        return true;
                     });
         } catch (Exception e) {
             throw new ExApiException("failed to async cancel order", e);

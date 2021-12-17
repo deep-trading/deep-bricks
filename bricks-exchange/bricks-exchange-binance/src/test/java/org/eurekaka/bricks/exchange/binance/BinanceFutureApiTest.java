@@ -74,8 +74,8 @@ public class BinanceFutureApiTest {
         // 5 async make order test
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.MARKET, 2, 4.1, 9));
-//        testAsyncOrderApi(api, new Order("n1", name, symbol,
-//                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.10, 9));
+        testAsyncOrderApi(api, new Order("n1", name, symbol,
+                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.02, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTC, 2, 4.1, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
@@ -92,6 +92,7 @@ public class BinanceFutureApiTest {
         System.out.println("async make order: " + api.asyncMakeOrder(order).get());
         System.out.println("get orders: " + api.asyncGetCurrentOrders(order.getSymbol()).get());
         System.out.println("get order: " + api.asyncGetOrder(order.getSymbol(), clientOrderId).get());
+        System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
         System.out.println("order: " + api.asyncCancelOrder(order.getSymbol(), clientOrderId).get());
     }
 

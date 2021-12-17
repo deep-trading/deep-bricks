@@ -176,11 +176,11 @@ public class AccountActor {
         return (CompletableFuture<CurrentOrder>) msg.getData();
     }
 
-    public CompletableFuture<Void> asyncCancelOrder(Order order) throws StrategyException {
+    public CompletableFuture<Boolean> asyncCancelOrder(Order order) throws StrategyException {
         return asyncCancelOrder(order.getAccount(), order.getName(), order.getSymbol(), order.getClientOrderId());
     }
 
-    public CompletableFuture<Void> asyncCancelOrder(String account, String name,
+    public CompletableFuture<Boolean> asyncCancelOrder(String account, String name,
                                                     String symbol, String clientOrderId) throws StrategyException {
         ActionPair pair = new ActionPair(name, symbol, clientOrderId);
         ExMessage<?> msg = accountManager.getAccount(account)
@@ -189,7 +189,7 @@ public class AccountActor {
             throw new StrategyException("failed to async cancel order, account " + account +
                     ", name: " + name + ", client order id: " + clientOrderId, (Exception) msg.getData());
         }
-        return (CompletableFuture<Void>) msg.getData();
+        return (CompletableFuture<Boolean>) msg.getData();
     }
 
     public CompletableFuture<CurrentOrder> asyncGetOrder(Info0 info, String clientOrderId) throws StrategyException {

@@ -119,7 +119,22 @@ public interface ExApi {
         throw new ExApiException("not implemented");
     }
 
-    default CompletableFuture<Void> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
+    /**
+     * 异步取消订单，当且仅当订单存在，取消成功时，返回true
+     * 不同平台取消订单的模式不一致，一共6种情况
+     *      - 订单不存在，取消成功
+     *      - 订单不存在，取消失败
+     *      - 订单存在，取消成功 true
+     *      - 订单存在，取消失败
+     *      - 订单已经取消，再次取消成功 true
+     *      - 订单已经取消，再次取消失败
+     * @param symbol 订单交易对
+     * @param clientOrderId 用户自定义id
+     * @return true - 取消成功
+     *         false - 成功取消订单之外的任意情况均返回false
+     * @throws ExApiException 执行失败
+     */
+    default CompletableFuture<Boolean> asyncCancelOrder(String symbol, String clientOrderId) throws ExApiException {
         throw new ExApiException("not implemented");
     }
 
