@@ -28,6 +28,15 @@ public class AccountActor {
         return accountManager.getAccount(account).getMakerRate();
     }
 
+    public double getCurrencyRate(String account) {
+        Exchange ex = accountManager.getAccount(account);
+        if (ex != null) {
+            ExMessage<?> msg = ex.process(new ExAction<>(ExAction.ActionType.GET_CURRENCY_RATE));
+            return (double) msg.getData();
+        }
+        return 0D;
+    }
+
     /**
      * query price
      */

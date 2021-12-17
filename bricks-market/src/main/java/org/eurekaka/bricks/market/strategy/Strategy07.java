@@ -289,15 +289,19 @@ public class Strategy07 implements Strategy {
             double price = orderNotify.getPrice();
             if (OrderSide.BUY.equals(orderNotify.getSide())) {
                 // 高价卖
+                price = price / (1 + accountActor.getCurrencyRate(info.getAccount()));
                 price = price * (1 + accountActor.getMakerRate(orderNotify.getAccount()));
                 price = price * (1 + accountActor.getTakerRate(other.getAccount()));
                 price = price * (1 + orderProfitRate);
+                price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
                 price = Utils.ceil(price, info.getPricePrecision());
             } else {
+                price = price / (1 + accountActor.getCurrencyRate(info.getAccount()));
                 price = price * (1 - accountActor.getMakerRate(orderNotify.getAccount()));
                 price = price * (1 - accountActor.getTakerRate(other.getAccount()));
                 price = price * (1 - orderProfitRate);
+                price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
                 price = Utils.floor(price, info.getPricePrecision());
             }
@@ -417,9 +421,13 @@ public class Strategy07 implements Strategy {
             double bidPriceRate = strategyConfig.getDouble("bid_price_rate", 0.0002);
             double price = depthPrice.price;
 
+            // 参考价格转通用货币计算
+            price = price / (1 + accountActor.getCurrencyRate(other.getAccount()));
             price = price * (1 - bidPriceRate);
             price = price * (1 - accountActor.getTakerRate(other.getAccount()));
             price = price * (1 - accountActor.getMakerRate(info.getAccount()));
+            price = price * (1 + accountActor.getCurrencyRate(info.getAccount()));
+
             price = Utils.floor(price, info.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
@@ -434,9 +442,11 @@ public class Strategy07 implements Strategy {
             double price = depthPrice.price;
 
             // 允许挂卖单
+            price = price / (1 + accountActor.getCurrencyRate(other.getAccount()));
             price = price * (1 + askPriceRate);
             price = price * (1 + accountActor.getTakerRate(other.getAccount()));
             price = price * (1 + accountActor.getMakerRate(info.getAccount()));
+            price = price * (1 + accountActor.getCurrencyRate(info.getAccount()));
             price = Utils.ceil(price, info.getPricePrecision());
 
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
