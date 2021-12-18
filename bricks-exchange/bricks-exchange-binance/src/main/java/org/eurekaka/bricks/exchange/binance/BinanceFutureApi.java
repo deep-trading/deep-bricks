@@ -377,7 +377,7 @@ public class BinanceFutureApi implements FutureExApi {
                         if (response.statusCode() != 200) {
                             try {
                                 BinanceOrder result = Utils.mapper.readValue(response.body(), BinanceOrder.class);
-                                if (result.code != -2011 && result.code != -2013) {
+                                if (result.code == -2011 || result.code == -2013) {
                                     return true;
                                 }
                             } catch (JsonProcessingException e) {

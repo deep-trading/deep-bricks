@@ -338,10 +338,12 @@ public class Strategy07 implements Strategy {
                 if (currentOrder.getPrice() > order.getPrice() ||
                         currentOrder.getPrice() < order.getPrice() * (1 - baseOrderCancelRate)) {
                     currentOrder.setState(OrderState.CANCELLING);
-                    accountActor.asyncCancelOrder(currentOrder).thenAccept(unused -> {
-                        currentOrder.setState(OrderState.CANCELLED);
-                        logger.info("{}: cancel bid order: {}",
-                                System.currentTimeMillis() - timeCounter, currentOrder);
+                    accountActor.asyncCancelOrder(currentOrder).thenAccept(cancelled -> {
+                        if (cancelled) {
+                            currentOrder.setState(OrderState.CANCELLED);
+                            logger.info("{}: cancelled bid order: {}",
+                                    System.currentTimeMillis() - timeCounter, currentOrder);
+                        }
                     });
                     // 控制撤单后，一定时间内不再下单
                     lastOrderTimeMap.put(info.getAccount() + side, System.currentTimeMillis());
@@ -352,10 +354,12 @@ public class Strategy07 implements Strategy {
                 if (currentOrder.getPrice() < order.getPrice() ||
                         currentOrder.getPrice() > order.getPrice() * (1 + baseOrderCancelRate)) {
                     currentOrder.setState(OrderState.CANCELLING);
-                    accountActor.asyncCancelOrder(currentOrder).thenAccept(unused -> {
-                        currentOrder.setState(OrderState.CANCELLED);
-                        logger.info("{}: cancel ask order: {}",
-                                System.currentTimeMillis() - timeCounter, currentOrder);
+                    accountActor.asyncCancelOrder(currentOrder).thenAccept(cancelled -> {
+                        if (cancelled) {
+                            currentOrder.setState(OrderState.CANCELLED);
+                            logger.info("{}: cancelled ask order: {}",
+                                    System.currentTimeMillis() - timeCounter, currentOrder);
+                        }
                     });
                     lastOrderTimeMap.put(info.getAccount() + side, System.currentTimeMillis());
                     return null;
@@ -376,13 +380,30 @@ public class Strategy07 implements Strategy {
                 order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
-                    if (newOrder != null && OrderStatus.NEW.equals(newOrder.getStatus()) &&
-                            order.getState().equals(OrderState.SUBMITTING)) {
-                        order.setState(OrderState.SUBMITTED);
-                    } else {
+                    if (newOrder == null || OrderStatus.EXPIRED.equals(newOrder.getStatus()) ||
+                            OrderStatus.CANCELLED.equals(newOrder.getStatus())) {
+                        // 此时订单失效/取消，可以直接设置本地订单状态为cancelled
                         order.setState(OrderState.CANCELLED);
+                    } else {
+                        if (order.getState().equals(OrderState.SUBMITTING)) {
+                            order.setState(OrderState.SUBMITTED);
+                            logger.info("{}: made new order: {}", System.currentTimeMillis() - timeCounter, newOrder);
+                        } else if (order.getState().equals(OrderState.CANCELLING) ||
+                                order.getState().equals(OrderState.CANCELLED)) {
+                            // 状态为cancelled订单，也可能还未真正取消
+                            // 再次取消订单，保证订单撤销
+                            logger.info("{}: cancelling submitted order: {}",
+                                    System.currentTimeMillis() - timeCounter, newOrder);
+                            try {
+                                accountActor.asyncCancelOrder(order).thenAccept(cancelled -> {
+                                    order.setState(OrderState.CANCELLED);
+                                });
+                            } catch (StrategyException e) {
+                                logger.error("{}: failed to cancel submitted order: {}",
+                                        System.currentTimeMillis() - timeCounter, newOrder);
+                            }
+                        }
                     }
-                    logger.info("{}: made new order: {}", System.currentTimeMillis() - timeCounter, newOrder);
                 });
 
                 return order;
