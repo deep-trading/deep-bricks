@@ -338,11 +338,13 @@ public class Strategy07 implements Strategy {
                 if (currentOrder.getPrice() > order.getPrice() ||
                         currentOrder.getPrice() < order.getPrice() * (1 - baseOrderCancelRate)) {
                     currentOrder.setState(OrderState.CANCELLING);
+                    long startCancelTime = System.currentTimeMillis();
                     accountActor.asyncCancelOrder(currentOrder).thenAccept(cancelled -> {
                         if (cancelled) {
                             currentOrder.setState(OrderState.CANCELLED);
-                            logger.info("{}: cancelled bid order: {}",
-                                    System.currentTimeMillis() - timeCounter, currentOrder);
+                            long currentTime = System.currentTimeMillis();
+                            logger.info("{}: {}: cancelled bid order: {}",
+                                    currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
                         }
                     });
                     // 控制撤单后，一定时间内不再下单
@@ -354,11 +356,13 @@ public class Strategy07 implements Strategy {
                 if (currentOrder.getPrice() < order.getPrice() ||
                         currentOrder.getPrice() > order.getPrice() * (1 + baseOrderCancelRate)) {
                     currentOrder.setState(OrderState.CANCELLING);
+                    long startCancelTime = System.currentTimeMillis();
                     accountActor.asyncCancelOrder(currentOrder).thenAccept(cancelled -> {
                         if (cancelled) {
                             currentOrder.setState(OrderState.CANCELLED);
-                            logger.info("{}: cancelled ask order: {}",
-                                    System.currentTimeMillis() - timeCounter, currentOrder);
+                            long currentTime = System.currentTimeMillis();
+                            logger.info("{}: {}: cancelled ask order: {}",
+                                    currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
                         }
                     });
                     lastOrderTimeMap.put(info.getAccount() + side, System.currentTimeMillis());
@@ -454,7 +458,7 @@ public class Strategy07 implements Strategy {
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
 
             order = new AsyncStateOrder(info.getAccount(), info.getName(), info.getSymbol(),
-                    side, OrderType.LIMIT_GTX, size, price, orderQuantity, OrderState.SUBMITTING);
+                    side, OrderType.LIMIT_GTC, size, price, orderQuantity, OrderState.SUBMITTING);
         } else {
             DepthPrice depthPrice = accountActor.getAskDepthPrice(other.getAccount(),
                     other.getName(), other.getSymbol(), (int) orderQuantity);
@@ -473,7 +477,7 @@ public class Strategy07 implements Strategy {
             double size = Utils.round(orderQuantity * 1.0 / price, sizePrecision);
 
             order = new AsyncStateOrder(info.getAccount(), info.getName(), info.getSymbol(),
-                    side, OrderType.LIMIT_GTX, size, price, orderQuantity, OrderState.SUBMITTING);
+                    side, OrderType.LIMIT_GTC, size, price, orderQuantity, OrderState.SUBMITTING);
         }
 
         return order;
