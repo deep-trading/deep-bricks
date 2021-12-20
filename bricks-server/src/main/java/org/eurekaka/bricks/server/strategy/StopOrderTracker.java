@@ -63,7 +63,7 @@ public class StopOrderTracker implements OrderTracker {
             if (OrderSide.BUY.equals(order.getSide())) {
                 // 买单，查看当前卖一价，是否触发风险价格
                 DepthPrice depthPrice = accountActor.getAskDepthPrice(order.getAccount(),
-                        order.getName(), order.getSymbol(), quantity);
+                        order.getName(), order.getSymbol(), 0);
                 if (depthPrice != null &&
                         (orderRiskRate > 0 && depthPrice.price > order.getPrice() * (1 + orderRiskRate) ||
                                 depthPrice.price < order.getPrice())) {
@@ -73,7 +73,7 @@ public class StopOrderTracker implements OrderTracker {
                 }
             } else if (OrderSide.SELL.equals(order.getSide())) {
                 DepthPrice depthPrice = accountActor.getBidDepthPrice(order.getAccount(),
-                        order.getName(), order.getSymbol(), quantity);
+                        order.getName(), order.getSymbol(), 0);
                 if (depthPrice != null &&
                         (orderRiskRate > 0 && depthPrice.price < order.getPrice() * (1 - orderRiskRate) ||
                                 depthPrice.price > order.getPrice())) {
