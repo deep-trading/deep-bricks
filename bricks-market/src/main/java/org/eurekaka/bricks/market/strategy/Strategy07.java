@@ -113,9 +113,9 @@ public class Strategy07 implements Strategy {
         List<CurrentOrder> trackingOrders = new ArrayList<>();
         accountActor.asyncGetCurrentOrders(info1).thenAccept(currentOrders -> {
             for (CurrentOrder currentOrder : currentOrders) {
-                if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
+                if (currentOrder.getClientOrderId() != null && currentOrder.getClientOrderId().startsWith("_")) {
                     trackingOrders.add(currentOrder);
-                } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
+                } else {
                     // 取消该订单
                     try {
                         accountActor.asyncCancelOrder(currentOrder.getAccount(),
@@ -129,9 +129,9 @@ public class Strategy07 implements Strategy {
 
         accountActor.asyncGetCurrentOrders(info2).thenAccept(currentOrders -> {
             for (CurrentOrder currentOrder : currentOrders) {
-                if (OrderType.LIMIT_GTC.equals(currentOrder.getType())) {
+                if (currentOrder.getClientOrderId() != null && currentOrder.getClientOrderId().startsWith("_")) {
                     trackingOrders.add(currentOrder);
-                } else if (OrderType.LIMIT_GTX.equals(currentOrder.getType())) {
+                } else {
                     // 取消该订单
                     try {
                         accountActor.asyncCancelOrder(currentOrder.getAccount(),
@@ -285,7 +285,7 @@ public class Strategy07 implements Strategy {
             double size = Utils.round(sizeDiff, sizePrecision);
 
             orderIndex2 = (orderIndex2 + 1) % 1000;
-            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex2;
+            String clientOrderId = "_" + orderNotify.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex2;
             double price = orderNotify.getPrice();
             if (OrderSide.BUY.equals(orderNotify.getSide())) {
                 // 高价卖
