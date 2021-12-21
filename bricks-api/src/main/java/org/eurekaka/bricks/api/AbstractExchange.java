@@ -429,7 +429,13 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
             return new ExMessage<>(ExMessage.ExMsgType.RIGHT, CompletableFuture.completedFuture(currentOrder));
         }
 
-        return new ExMessage<>(ExMessage.ExMsgType.RIGHT, api.asyncMakeOrder(order));
+        return new ExMessage<>(ExMessage.ExMsgType.RIGHT,
+                api.asyncMakeOrder(order).thenApply(currentOrder -> {
+                    if (currentOrder != null) {
+                        order.setOrderId(currentOrder.getId());
+                    }
+                    return currentOrder;
+                }));
     }
 
     /**

@@ -18,6 +18,7 @@ public class StopOrderTracker implements OrderTracker {
 
     private final Map<String, CurrentOrder> trackingOrderMap;
     private final Map<String, CurrentOrder> removedOrderMap;
+    private final Map<String, CurrentOrder> expiredOrderMap;
 
     private final AccountActor accountActor;
     private final StrategyConfig strategyConfig;
@@ -37,6 +38,7 @@ public class StopOrderTracker implements OrderTracker {
 
         this.trackingOrderMap = new ConcurrentHashMap<>();
         this.removedOrderMap = new ConcurrentHashMap<>();
+        this.expiredOrderMap = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -59,46 +61,59 @@ public class StopOrderTracker implements OrderTracker {
         for (CurrentOrder order : trackingOrderMap.values()) {
             // 根据价格检查是否需要移除订单
             // 处理风险订单
-            int quantity = (int) Math.round((order.getSize() - order.getFilledSize()) * order.getPrice());
             if (OrderSide.BUY.equals(order.getSide())) {
                 // 买单，查看当前卖一价，是否触发风险价格
                 DepthPrice depthPrice = accountActor.getAskDepthPrice(order.getAccount(),
                         order.getName(), order.getSymbol(), 0);
-                if (depthPrice != null &&
-                        (orderRiskRate > 0 && depthPrice.price > order.getPrice() * (1 + orderRiskRate) ||
-                                depthPrice.price < order.getPrice())) {
-                    // 取消挂单，转市价单对冲
-                    removedOrderMap.put(order.getClientOrderId(), order);
-                    continue;
+                if (depthPrice != null && orderRiskRate > 0) {
+                    if (depthPrice.price > order.getPrice() * (1 + orderRiskRate)) {
+                        logger.info("bid order risk too high, order price: {}, ask price: {}",
+                                order.getPrice(), depthPrice.price);
+                        expiredOrderMap.put(order.getClientOrderId(), order);
+                        continue;
+                    } else if (depthPrice.price < order.getPrice()) {
+                        logger.info("bid order should be filled, ask price {} is lower than order price {}",
+                                depthPrice.price, order.getPrice());
+                        removedOrderMap.put(order.getClientOrderId(), order);
+                        continue;
+                    }
                 }
             } else if (OrderSide.SELL.equals(order.getSide())) {
                 DepthPrice depthPrice = accountActor.getBidDepthPrice(order.getAccount(),
                         order.getName(), order.getSymbol(), 0);
-                if (depthPrice != null &&
-                        (orderRiskRate > 0 && depthPrice.price < order.getPrice() * (1 - orderRiskRate) ||
-                                depthPrice.price > order.getPrice())) {
-                    // 取消挂单，转市价单对冲
-                    removedOrderMap.put(order.getClientOrderId(), order);
-                    continue;
+                if (depthPrice != null && orderRiskRate > 0) {
+                    if (depthPrice.price < order.getPrice() * (1 - orderRiskRate)) {
+                        logger.info("ask order risk too high, order price: {}, bid price: {}",
+                                order.getPrice(), depthPrice.price);
+                        expiredOrderMap.put(order.getClientOrderId(), order);
+                        continue;
+                    } else if (depthPrice.price > order.getPrice()) {
+                        logger.info("ask order should be filled, bid price {} is higher than order price {}",
+                                depthPrice.price, order.getPrice());
+                        removedOrderMap.put(order.getClientOrderId(), order);
+                        continue;
+                    }
                 }
             }
 
             // 处理超时订单
             if (orderAliveTime > 0 && order.getTime() + orderAliveTime < System.currentTimeMillis()) {
                 // 取消挂单，转市价单对冲
-                removedOrderMap.put(order.getClientOrderId(), order);
+                logger.info("order expired: {}", order);
+                expiredOrderMap.put(order.getClientOrderId(), order);
             }
         }
 
         for (String clientOrderId : removedOrderMap.keySet()) {
             trackingOrderMap.remove(clientOrderId);
         }
-
-        for (CurrentOrder order : removedOrderMap.values()) {
-            completeCurrentOrder(order);
+        for (CurrentOrder currentOrder : expiredOrderMap.values()) {
+            trackingOrderMap.remove(currentOrder.getClientOrderId());
+            completeCurrentOrder(currentOrder);
         }
 
         removedOrderMap.clear();
+        expiredOrderMap.clear();
     }
 
     /**
@@ -150,6 +165,7 @@ public class StopOrderTracker implements OrderTracker {
                     Order o = new Order(currentOrder.getAccount(), order.getName(), order.getSymbol(),
                             order.getSide(), OrderType.MARKET, size, order.getPrice(), quantity, clientOrderId);
                     try {
+                        logger.info("making market order: {}", o);
                         accountActor.asyncMakeOrder(o);
                     } catch (StrategyException e) {
                         throw new CompletionException("failed to make tracking order: " + o, e);

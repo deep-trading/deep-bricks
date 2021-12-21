@@ -113,15 +113,17 @@ public class Strategy07 implements Strategy {
         List<CurrentOrder> trackingOrders = new ArrayList<>();
         accountActor.asyncGetCurrentOrders(info1).thenAccept(currentOrders -> {
             for (CurrentOrder currentOrder : currentOrders) {
-                if (currentOrder.getClientOrderId() != null && currentOrder.getClientOrderId().startsWith("_")) {
-                    trackingOrders.add(currentOrder);
-                } else {
-                    // 取消该订单
-                    try {
-                        accountActor.asyncCancelOrder(currentOrder.getAccount(),
-                                currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
-                    } catch (StrategyException e) {
-                        throw new CompletionException("failed to init cancel order: " + currentOrder, e);
+                if (currentOrder.getClientOrderId() != null) {
+                    if (currentOrder.getClientOrderId().startsWith("_")) {
+                        // 取消该订单
+                        try {
+                            accountActor.asyncCancelOrder(currentOrder.getAccount(),
+                                    currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+                        } catch (StrategyException e) {
+                            throw new CompletionException("failed to init cancel order: " + currentOrder, e);
+                        }
+                    } else {
+                        trackingOrders.add(currentOrder);
                     }
                 }
             }
@@ -129,15 +131,17 @@ public class Strategy07 implements Strategy {
 
         accountActor.asyncGetCurrentOrders(info2).thenAccept(currentOrders -> {
             for (CurrentOrder currentOrder : currentOrders) {
-                if (currentOrder.getClientOrderId() != null && currentOrder.getClientOrderId().startsWith("_")) {
-                    trackingOrders.add(currentOrder);
-                } else {
-                    // 取消该订单
-                    try {
-                        accountActor.asyncCancelOrder(currentOrder.getAccount(),
-                                currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
-                    } catch (StrategyException e) {
-                        throw new CompletionException("failed to init cancel order: " + currentOrder, e);
+                if (currentOrder.getClientOrderId() != null) {
+                    if (currentOrder.getClientOrderId().startsWith("_")) {
+                        // 取消该订单
+                        try {
+                            accountActor.asyncCancelOrder(currentOrder.getAccount(),
+                                    currentOrder.getName(), currentOrder.getSymbol(), currentOrder.getClientOrderId());
+                        } catch (StrategyException e) {
+                            throw new CompletionException("failed to init cancel order: " + currentOrder, e);
+                        }
+                    } else {
+                        trackingOrders.add(currentOrder);
                     }
                 }
             }
@@ -285,7 +289,7 @@ public class Strategy07 implements Strategy {
             double size = Utils.round(sizeDiff, sizePrecision);
 
             orderIndex2 = (orderIndex2 + 1) % 1000;
-            String clientOrderId = "_" + orderNotify.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex2;
+            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex2;
             double price = orderNotify.getPrice();
             if (OrderSide.BUY.equals(orderNotify.getSide())) {
                 // 高价卖
@@ -380,7 +384,7 @@ public class Strategy07 implements Strategy {
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
             if (checkOrderInterval(info.getAccount() + side)) {
                 orderIndex1 = (orderIndex1 + 1) % 1000;
-                String clientOrderId = info.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex1;
+                String clientOrderId = "_" + info.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
