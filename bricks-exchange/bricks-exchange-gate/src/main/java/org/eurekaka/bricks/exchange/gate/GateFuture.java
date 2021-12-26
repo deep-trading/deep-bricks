@@ -62,12 +62,12 @@ public class GateFuture extends AbstractFutureExchange {
 //                    "futures.trades", "subscribe", payload)), true);
 
             // sub order book
-            payload.clear();
-            payload.add(symbol);
-            payload.add("1");
-            payload.add("0");
-            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
-                    "futures.order_book", "subscribe", payload)), true);
+//            payload.clear();
+//            payload.add(symbol);
+//            payload.add("1");
+//            payload.add("0");
+//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+//                    "futures.order_book", "subscribe", payload)), true);
 
             payload.clear();
             payload.add(symbol);
@@ -114,12 +114,12 @@ public class GateFuture extends AbstractFutureExchange {
                     "futures.tickers", "unsubscribe", payload);
             this.webSocket.sendText(Utils.mapper.writeValueAsString(request), true);
 
-            payload.clear();
-            payload.add(symbol);
-            payload.add("1");
-            payload.add("0");
-            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
-                    "futures.order_book", "unsubscribe", payload)), true);
+//            payload.clear();
+//            payload.add(symbol);
+//            payload.add("1");
+//            payload.add("0");
+//            this.webSocket.sendText(Utils.mapper.writeValueAsString(new GateWebSocketRequest(
+//                    "futures.order_book", "unsubscribe", payload)), true);
 
             payload.clear();
             payload.add(symbol);

@@ -32,6 +32,11 @@ public class AccountStatus {
     // 小堆，first entry key 价格最低
     private final Map<String, TreeMap<Double, Double>> askOrderBooks;
 
+    // 买一
+    private final Map<String, Double> topBids;
+    // 卖一
+    private final Map<String, Double> topAsks;
+
     // websocket 接收的order book value，用于缓存最近一段时间的订单簿数据
     private final Map<String, LinkedList<OrderBookValue>> orderBookValues;
 
@@ -57,6 +62,8 @@ public class AccountStatus {
         this.balances = new ConcurrentHashMap<>();
         this.klineValues = new ConcurrentHashMap<>();
         this.orderBookValues = new ConcurrentHashMap<>();
+        this.topBids = new ConcurrentHashMap<>();
+        this.topAsks = new ConcurrentHashMap<>();
     }
 
     public Map<String, String> getSymbols() {
@@ -236,22 +243,17 @@ public class AccountStatus {
      * @param value 当前挂单数量
      */
     private void updateOrderBookTicker(Map<String, TreeMap<Double, Double>> source, String symbol, double key, double value) {
-        if (source.containsKey(symbol)) {
+        if (source.containsKey(symbol) && !source.get(symbol).isEmpty()) {
             TreeMap<Double, Double> map = source.get(symbol);
-            if (map.isEmpty()) {
-                return;
-            }
-            if (map.comparator().compare(map.firstKey(), key) > 0 ||
-                    map.comparator().compare(map.firstKey(), key) == 0 && value > 0) {
+            if (map.comparator().compare(map.firstKey(), key) >= 0) {
                 return;
             }
 
             synchronized (source.get(symbol)) {
-                Iterator<Map.Entry<Double, Double>> iterator = map.entrySet().iterator();
+                Iterator<Map.Entry<Double, Double>> iterator = source.get(symbol).entrySet().iterator();
                 while (iterator.hasNext()) {
                     Map.Entry<Double, Double> it = iterator.next();
-                    if (map.comparator().compare(it.getKey(), key) < 0 ||
-                            map.comparator().compare(map.firstKey(), key) == 0 && value == 0) {
+                    if (map.comparator().compare(it.getKey(), key) <= 0) {
 //                        System.out.println("remove key: " + it.getKey() + ", current: " + key);
                         iterator.remove();
                     } else {
@@ -262,6 +264,39 @@ public class AccountStatus {
                     map.put(key, value);
                 }
             }
+        }
+    }
+
+    public void updateTopBid(String symbol, String account) {
+        if (symbols.containsKey(symbol) && bidOrderBooks.containsKey(symbol) &&
+                !bidOrderBooks.get(symbol).isEmpty()) {
+            double price = bidOrderBooks.get(symbol).firstKey();
+            if (!topBids.containsKey(symbol) || price != topBids.get(symbol)) {
+                topBids.put(symbol, price);
+                // 发送通知
+//                System.out.println("notify 2: " + price);
+                sendNotification(new TopDepthNotification(symbols.get(symbol),
+                        symbol, account, TopDepthNotification.DepthSide.BID));
+            }
+        }
+    }
+
+    public void updateTopAsk(String symbol, String account) {
+        if (symbols.containsKey(symbol) && askOrderBooks.containsKey(symbol) &&
+                !askOrderBooks.get(symbol).isEmpty()) {
+            double price = askOrderBooks.get(symbol).firstKey();
+            if (!topAsks.containsKey(symbol) || topAsks.get(symbol) != price) {
+                topAsks.put(symbol, price);
+//                System.out.println("notify 3: " + price);
+                sendNotification(new TopDepthNotification(symbols.get(symbol),
+                        symbol, account, TopDepthNotification.DepthSide.ASK));
+            }
+        }
+    }
+
+    public void sendNotification(Notification notification) {
+        if (this.notificationQueue != null) {
+            this.notificationQueue.add(notification);
         }
     }
 

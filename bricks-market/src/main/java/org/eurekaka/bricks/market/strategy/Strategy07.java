@@ -207,25 +207,25 @@ public class Strategy07 implements Strategy {
         posQuantity1 = accountActor.getPosition(info1).getQuantity();
         posQuantity2 = accountActor.getPosition(info2).getQuantity();
 
-        AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
-        if (o1 != null) {
-            bidOrder1 = o1;
-        }
-
-        AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
-        if (o2 != null) {
-            askOrder1 = o2;
-        }
-
-        AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
-        if (o3 != null) {
-            bidOrder2 = o3;
-        }
-
-        AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
-        if (o4 != null) {
-            askOrder2 = o4;
-        }
+//        AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
+//        if (o1 != null) {
+//            bidOrder1 = o1;
+//        }
+//
+//        AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
+//        if (o2 != null) {
+//            askOrder1 = o2;
+//        }
+//
+//        AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
+//        if (o3 != null) {
+//            bidOrder2 = o3;
+//        }
+//
+//        AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
+//        if (o4 != null) {
+//            askOrder2 = o4;
+//        }
 
     }
 
@@ -264,6 +264,34 @@ public class Strategy07 implements Strategy {
                     orderTracker.submit(order).thenAccept(o -> {
                         logger.info("{}: made trade hedging order: {}", System.currentTimeMillis() - timeCounter, o);
                     });
+                }
+            }
+        } else if (notification instanceof TopDepthNotification) {
+            // 当对应最优价格有变动时推送消息处理，走低或者走高
+            TopDepthNotification depthPrice = (TopDepthNotification) notification;
+            if (info1.getAccount().equals(depthPrice.getAccount())) {
+                if (TopDepthNotification.DepthSide.BID.equals(depthPrice.getSide())) {
+                    AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
+                    if (o3 != null) {
+                        bidOrder2 = o3;
+                    }
+                } else if (TopDepthNotification.DepthSide.ASK.equals(depthPrice.getSide())) {
+                    AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
+                    if (o4 != null) {
+                        askOrder2 = o4;
+                    }
+                }
+            } else if (info2.getAccount().equals(depthPrice.getAccount())) {
+                if (TopDepthNotification.DepthSide.BID.equals(depthPrice.getSide())) {
+                    AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
+                    if (o1 != null) {
+                        bidOrder1 = o1;
+                    }
+                } else if (TopDepthNotification.DepthSide.ASK.equals(depthPrice.getSide())) {
+                    AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
+                    if (o2 != null) {
+                        askOrder1 = o2;
+                    }
                 }
             }
         }

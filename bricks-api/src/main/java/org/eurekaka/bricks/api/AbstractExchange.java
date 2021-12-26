@@ -598,8 +598,8 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 for (String key : accountStatus.getOrderBookValues().keySet()) {
                     synchronized (accountStatus.getOrderBookValues().get(key)) {
                         LinkedList<OrderBookValue> orderBookValues = accountStatus.getOrderBookValues().get(key);
-                        if (orderBookValues.size() > 1000) {
-                            orderBookValues.subList(0, orderBookValues.size() - orderBookLimit).clear();
+                        if (orderBookValues.size() > 100) {
+                            orderBookValues.subList(0, orderBookValues.size() - 100).clear();
                         }
                     }
                 }

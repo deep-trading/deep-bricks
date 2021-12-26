@@ -13,11 +13,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
+// todo:: 定期拿取当前订单，更新现有订单状态
 public class StopOrderTracker implements OrderTracker {
     private final static Logger logger = LoggerFactory.getLogger(StopOrderTracker.class);
 
     private final Map<String, CurrentOrder> trackingOrderMap;
     private final Map<String, CurrentOrder> removedOrderMap;
+
     private final Map<String, CurrentOrder> expiredOrderMap;
 
     private final AccountActor accountActor;
@@ -31,6 +33,8 @@ public class StopOrderTracker implements OrderTracker {
     private int minOrderQuantity;
 
     private int index;
+    private int timeCounterInterval;
+    private volatile long timeCounter;
 
     public StopOrderTracker(StrategyConfig strategyConfig, AccountActor accountActor) {
         this.accountActor = accountActor;
@@ -54,6 +58,9 @@ public class StopOrderTracker implements OrderTracker {
         }
 
         index = 0;
+
+        timeCounter = System.currentTimeMillis();
+        timeCounterInterval = strategyConfig.getInt("time_counter_interval", 180000);
     }
 
     @Override
@@ -72,8 +79,8 @@ public class StopOrderTracker implements OrderTracker {
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     } else if (depthPrice.price < order.getPrice()) {
-                        logger.info("bid order should be filled, ask price {} is lower than order price {}",
-                                depthPrice.price, order.getPrice());
+                        logger.info("bid order should be filled, id: {}, ask price {} is lower than order price {}",
+                                order.getClientOrderId(), depthPrice.price, order.getPrice());
                         removedOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     }
@@ -83,8 +90,8 @@ public class StopOrderTracker implements OrderTracker {
                         order.getName(), order.getSymbol(), 0);
                 if (depthPrice != null && orderRiskRate > 0) {
                     if (depthPrice.price < order.getPrice() * (1 - orderRiskRate)) {
-                        logger.info("ask order risk too high, order price: {}, bid price: {}",
-                                order.getPrice(), depthPrice.price);
+                        logger.info("ask order risk too high, id: {}, order price: {}, bid price: {}",
+                                order.getClientOrderId(), order.getPrice(), depthPrice.price);
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     } else if (depthPrice.price > order.getPrice()) {
@@ -107,9 +114,20 @@ public class StopOrderTracker implements OrderTracker {
         for (String clientOrderId : removedOrderMap.keySet()) {
             trackingOrderMap.remove(clientOrderId);
         }
+        // 针对过期订单，先
         for (CurrentOrder currentOrder : expiredOrderMap.values()) {
             trackingOrderMap.remove(currentOrder.getClientOrderId());
+
             completeCurrentOrder(currentOrder);
+        }
+
+        if (System.currentTimeMillis() - timeCounter > timeCounterInterval) {
+            timeCounter = System.currentTimeMillis();
+            // log internal state here
+            logger.info("current tracking orders: {}", trackingOrderMap.size());
+            for (CurrentOrder currentOrder : trackingOrderMap.values()) {
+                logger.info("current tracking order: {}", currentOrder);
+            }
         }
 
         removedOrderMap.clear();
