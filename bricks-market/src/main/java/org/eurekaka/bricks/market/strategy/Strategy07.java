@@ -207,25 +207,25 @@ public class Strategy07 implements Strategy {
         posQuantity1 = accountActor.getPosition(info1).getQuantity();
         posQuantity2 = accountActor.getPosition(info2).getQuantity();
 
-//        AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
-//        if (o1 != null) {
-//            bidOrder1 = o1;
-//        }
-//
-//        AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
-//        if (o2 != null) {
-//            askOrder1 = o2;
-//        }
-//
-//        AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
-//        if (o3 != null) {
-//            bidOrder2 = o3;
-//        }
-//
-//        AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
-//        if (o4 != null) {
-//            askOrder2 = o4;
-//        }
+        AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
+        if (o1 != null) {
+            bidOrder1 = o1;
+        }
+
+        AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
+        if (o2 != null) {
+            askOrder1 = o2;
+        }
+
+        AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
+        if (o3 != null) {
+            bidOrder2 = o3;
+        }
+
+        AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
+        if (o4 != null) {
+            askOrder2 = o4;
+        }
 
     }
 
@@ -327,7 +327,7 @@ public class Strategy07 implements Strategy {
                 price = price * (1 + orderProfitRate);
                 price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
-                price = Utils.ceil(price, info.getPricePrecision());
+                price = Utils.floor(price, info.getPricePrecision());
             } else {
                 price = price / (1 + accountActor.getCurrencyRate(info.getAccount()));
                 price = price * (1 - accountActor.getMakerRate(orderNotify.getAccount()));
@@ -335,7 +335,7 @@ public class Strategy07 implements Strategy {
                 price = price * (1 - orderProfitRate);
                 price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
-                price = Utils.floor(price, info.getPricePrecision());
+                price = Utils.ceil(price, info.getPricePrecision());
             }
 
 
