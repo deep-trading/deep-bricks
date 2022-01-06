@@ -106,9 +106,6 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                     accountStatus.buildOrderBookValue(result.symbol, value);
                 });
             }
-            accountStatus.updateTopBid(result.symbol, accountConfig.getName());
-            accountStatus.updateTopAsk(result.symbol, accountConfig.getName());
-
 //            long timer = System.currentTimeMillis() - start;
 //            double bid = 0;
 //            double ask = 0;
@@ -133,14 +130,14 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 //            logger.info("book ticker, elapsed time: {}, message: {}",
 //                    System.currentTimeMillis() - result.time, message);
             if (result.bidPrice > 0 && result.bidSize != 0) {
-                accountStatus.updateBidOrderBookTicker(result.contract,
-                        result.bidPrice, api.getSize(result.contract, result.bidSize));
-                accountStatus.updateTopBid(result.contract, accountConfig.getName());
+//                accountStatus.updateBidOrderBookTicker(result.contract,
+//                        result.bidPrice, api.getSize(result.contract, result.bidSize));
+                accountStatus.updateTopBid(result.contract, accountConfig.getName(), result.bidPrice);
             }
             if (result.askPrice > 0 && result.askSize != 0) {
                 accountStatus.updateAskOrderBookTicker(result.contract,
                         result.askPrice, api.getSize(result.contract, result.askSize));
-                accountStatus.updateTopAsk(result.contract, accountConfig.getName());
+                accountStatus.updateTopAsk(result.contract, accountConfig.getName(), result.askPrice);
             }
 //            long timer = System.currentTimeMillis() - start;
 //            double bid = 0;

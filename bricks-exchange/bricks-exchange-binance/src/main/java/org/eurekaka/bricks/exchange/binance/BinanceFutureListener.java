@@ -67,10 +67,6 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
                     accountStatus.buildOrderBookValue(msg.symbol, value);
                 });
             }
-            // 买一卖一价格有变动更新，推送消息
-            accountStatus.updateTopBid(msg.symbol, accountConfig.getName());
-            accountStatus.updateTopAsk(msg.symbol, accountConfig.getName());
-
 //            long timer = System.currentTimeMillis() - start;
 //            double bid = 0;
 //            double ask = 0;
@@ -91,13 +87,13 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
 //                    System.currentTimeMillis() - msg.eventTime, message);
 
             if (msg.bidPrice > 0 && msg.bidSize > 0) {
-                accountStatus.updateBidOrderBookTicker(msg.symbol, msg.bidPrice, msg.bidSize);
-                accountStatus.updateTopBid(msg.symbol, accountConfig.getName());
+//                accountStatus.updateBidOrderBookTicker(msg.symbol, msg.bidPrice, msg.bidSize);
+                accountStatus.updateTopBid(msg.symbol, accountConfig.getName(), msg.bidPrice);
             }
 
             if (msg.askPrice > 0 && msg.askSize > 0) {
-                accountStatus.updateAskOrderBookTicker(msg.symbol, msg.askPrice, msg.askSize);
-                accountStatus.updateTopAsk(msg.symbol, accountConfig.getName());
+//                accountStatus.updateAskOrderBookTicker(msg.symbol, msg.askPrice, msg.askSize);
+                accountStatus.updateTopAsk(msg.symbol, accountConfig.getName(), msg.askPrice);
             }
         } else {
             BinanceWebSocketMsg msg = reader3.readValue(node);

@@ -270,29 +270,27 @@ public class AccountStatus {
         }
     }
 
-    public void updateTopBid(String symbol, String account) {
-        if (symbols.containsKey(symbol) && bidOrderBooks.containsKey(symbol) &&
+    public void updateTopBid(String symbol, String account, double bidPrice) {
+        if (symbols.containsKey(symbol) &&
                 !bidOrderBooks.get(symbol).isEmpty()) {
-            double price = bidOrderBooks.get(symbol).firstKey();
-            if (!topBids.containsKey(symbol) || price != topBids.get(symbol)) {
-                topBids.put(symbol, price);
+            if (!topBids.containsKey(symbol) || bidPrice != topBids.get(symbol)) {
+                topBids.put(symbol, bidPrice);
                 // 发送通知
 //                System.out.println("notify 2: " + price);
                 sendNotification(new TopDepthNotification(symbols.get(symbol),
-                        symbol, account, TopDepthNotification.DepthSide.BID));
+                        symbol, account, TopDepthNotification.DepthSide.BID, bidPrice));
             }
         }
     }
 
-    public void updateTopAsk(String symbol, String account) {
+    public void updateTopAsk(String symbol, String account, double askPrice) {
         if (symbols.containsKey(symbol) && askOrderBooks.containsKey(symbol) &&
                 !askOrderBooks.get(symbol).isEmpty()) {
-            double price = askOrderBooks.get(symbol).firstKey();
-            if (!topAsks.containsKey(symbol) || topAsks.get(symbol) != price) {
-                topAsks.put(symbol, price);
+            if (!topAsks.containsKey(symbol) || topAsks.get(symbol) != askPrice) {
+                topAsks.put(symbol, askPrice);
 //                System.out.println("notify 3: " + price);
                 sendNotification(new TopDepthNotification(symbols.get(symbol),
-                        symbol, account, TopDepthNotification.DepthSide.ASK));
+                        symbol, account, TopDepthNotification.DepthSide.ASK, askPrice));
             }
         }
     }

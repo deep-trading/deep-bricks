@@ -7,12 +7,14 @@ public class TopDepthNotification implements Notification {
     private final String symbol;
     private final String account;
     private final DepthSide side;
+    private final double topPrice;
 
-    public TopDepthNotification(String name, String symbol, String account, DepthSide side) {
+    public TopDepthNotification(String name, String symbol, String account, DepthSide side, double topPrice) {
         this.name = name;
         this.symbol = symbol;
         this.account = account;
         this.side = side;
+        this.topPrice = topPrice;
     }
 
     @Override
@@ -33,20 +35,25 @@ public class TopDepthNotification implements Notification {
         return side;
     }
 
+    public double getTopPrice() {
+        return topPrice;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof TopDepthNotification)) return false;
         TopDepthNotification that = (TopDepthNotification) o;
-        return side.equals(that.side) &&
+        return Double.compare(that.topPrice, topPrice) == 0 &&
                 name.equals(that.name) &&
                 symbol.equals(that.symbol) &&
-                account.equals(that.account);
+                account.equals(that.account) &&
+                side == that.side;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, symbol, account, side);
+        return Objects.hash(name, symbol, account, side, topPrice);
     }
 
     @Override
@@ -56,6 +63,7 @@ public class TopDepthNotification implements Notification {
                 ", symbol='" + symbol + '\'' +
                 ", account='" + account + '\'' +
                 ", side='" + side + '\'' +
+                ", topPrice=" + topPrice +
                 '}';
     }
 
