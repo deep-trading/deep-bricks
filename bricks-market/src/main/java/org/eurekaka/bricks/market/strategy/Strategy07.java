@@ -313,7 +313,7 @@ public class Strategy07 implements Strategy {
             double size = Utils.round(sizeDiff, sizePrecision);
 
             orderIndex2 = (orderIndex2 + 1) % 1000;
-            String clientOrderId = orderNotify.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex2;
+            String clientOrderId = orderNotify.getClientOrderId().substring(1) + "_" + orderIndex2;
             double price = orderNotify.getPrice();
             if (OrderSide.BUY.equals(orderNotify.getSide())) {
                 // 高价卖
