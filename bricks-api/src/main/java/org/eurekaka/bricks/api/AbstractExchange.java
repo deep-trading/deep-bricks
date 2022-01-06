@@ -522,12 +522,16 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
 
     protected ExMessage<DepthPrice> getBidDepthPrice(DepthPricePair depthPricePair) throws ExApiException {
-        if (accountStatus.getBidOrderBooks().containsKey(depthPricePair.symbol)) {
+        if (accountStatus.getBidOrderBooks().containsKey(depthPricePair.symbol) &&
+                accountStatus.getTopBids().containsKey(depthPricePair.symbol)) {
             TreeMap<Double, Double> depths = accountStatus.getBidOrderBooks().get(depthPricePair.symbol);
             int sum1 = 0;
             double sum2 = 0;
             for (Map.Entry<Double, Double> entry : depths.entrySet()) {
                 double price = entry.getKey();
+                if (price > accountStatus.getTopBids().get(depthPricePair.symbol)) {
+                    continue;
+                }
                 int quantity = (int) Math.floor(price * entry.getValue());
                 sum1 += quantity;
                 sum2 += entry.getValue();
@@ -543,12 +547,16 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
     }
 
     protected ExMessage<DepthPrice> getAskDepthPrice(DepthPricePair depthPricePair) {
-        if (accountStatus.getAskOrderBooks().containsKey(depthPricePair.symbol)) {
+        if (accountStatus.getAskOrderBooks().containsKey(depthPricePair.symbol) &&
+                accountStatus.getTopAsks().containsKey(depthPricePair.symbol)) {
             TreeMap<Double, Double> depths = accountStatus.getAskOrderBooks().get(depthPricePair.symbol);
             int sum1 = 0;
             double sum2 = 0;
             for (Map.Entry<Double, Double> entry : depths.entrySet()) {
                 double price = entry.getKey();
+                if (price < accountStatus.getTopAsks().get(depthPricePair.symbol)) {
+                    continue;
+                }
                 int quantity = (int) Math.floor(price * entry.getValue());
                 sum1 += quantity;
                 sum2 += entry.getValue();
