@@ -276,27 +276,15 @@ public class Strategy07 implements Strategy {
             TopDepthNotification depthPrice = (TopDepthNotification) notification;
             if (info1.getAccount().equals(depthPrice.getAccount())) {
                 if (TopDepthNotification.DepthSide.BID.equals(depthPrice.getSide())) {
-                    AsyncStateOrder o3 = updateOrder(info2, info1, OrderSide.BUY, bidOrder2, posQuantity2);
-                    if (o3 != null) {
-                        bidOrder2 = o3;
-                    }
+                    cancelOrder(info2, info1, bidOrder2, depthPrice.getTopPrice());
                 } else if (TopDepthNotification.DepthSide.ASK.equals(depthPrice.getSide())) {
-                    AsyncStateOrder o4 = updateOrder(info2, info1, OrderSide.SELL, askOrder2, posQuantity2);
-                    if (o4 != null) {
-                        askOrder2 = o4;
-                    }
+                    cancelOrder(info2, info1, askOrder2, depthPrice.getTopPrice());
                 }
             } else if (info2.getAccount().equals(depthPrice.getAccount())) {
                 if (TopDepthNotification.DepthSide.BID.equals(depthPrice.getSide())) {
-                    AsyncStateOrder o1 = updateOrder(info1, info2, OrderSide.BUY, bidOrder1, posQuantity1);
-                    if (o1 != null) {
-                        bidOrder1 = o1;
-                    }
+                    cancelOrder(info1, info2, bidOrder1, depthPrice.getTopPrice());
                 } else if (TopDepthNotification.DepthSide.ASK.equals(depthPrice.getSide())) {
-                    AsyncStateOrder o2 = updateOrder(info1, info2, OrderSide.SELL, askOrder1, posQuantity1);
-                    if (o2 != null) {
-                        askOrder1 = o2;
-                    }
+                    cancelOrder(info1, info2, askOrder1, depthPrice.getTopPrice());
                 }
             }
         }
@@ -385,7 +373,7 @@ public class Strategy07 implements Strategy {
                         if (cancelled) {
                             currentOrder.setState(OrderState.CANCELLED);
                             long currentTime = System.currentTimeMillis();
-                            logger.info("{}: {}: cancelled bid order: {}",
+                            logger.info("{}: {}: loop cancelled bid order: {}",
                                     currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
                         }
                     });
@@ -403,7 +391,7 @@ public class Strategy07 implements Strategy {
                         if (cancelled) {
                             currentOrder.setState(OrderState.CANCELLED);
                             long currentTime = System.currentTimeMillis();
-                            logger.info("{}: {}: cancelled ask order: {}",
+                            logger.info("{}: {}: loop cancelled ask order: {}",
                                     currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
                         }
                     });
@@ -526,6 +514,74 @@ public class Strategy07 implements Strategy {
         }
 
         return order;
+    }
+
+    private void cancelOrder(Info0 info, Info0 other, AsyncStateOrder currentOrder,
+                             double topPrice) throws StrategyException {
+        if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLING) ||
+                currentOrder.getState().equals(OrderState.CANCELLED)) {
+            return;
+        }
+
+        // 检查是否需要撤单
+        if (currentOrder.getSide().equals(OrderSide.BUY)) {
+            // 根据top price，计算当前合理价格
+            double price = topPrice;
+            double bidPriceRate = strategyConfig.getDouble("bid_price_rate", 0.0002);
+            // 参考价格转通用货币计算
+            price = price / (1 + accountActor.getCurrencyRate(other.getAccount()));
+            price = price * (1 - bidPriceRate);
+            price = price * (1 - accountActor.getTakerRate(other.getAccount()));
+            price = price * (1 - accountActor.getMakerRate(info.getAccount()));
+            price = price * (1 + accountActor.getCurrencyRate(info.getAccount()));
+
+            price = Utils.floor(price, info.getPricePrecision());
+
+            double baseOrderCancelRate = strategyConfig.getDouble("bid_cancel_rate", 0.001);
+            if (currentOrder.getPrice() > price ||
+                    currentOrder.getPrice() < price * (1 - baseOrderCancelRate)) {
+                currentOrder.setState(OrderState.CANCELLING);
+                long startCancelTime = System.currentTimeMillis();
+                accountActor.asyncCancelOrder(currentOrder).thenAccept(cancelled -> {
+                    if (cancelled) {
+                        currentOrder.setState(OrderState.CANCELLED);
+                        long currentTime = System.currentTimeMillis();
+                        logger.info("{}: {}: cancelled bid order: {}",
+                                currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
+                    }
+                });
+                // 控制撤单后，一定时间内不再下单
+                lastOrderTimeMap.put(info.getAccount() + OrderSide.BUY, System.currentTimeMillis());
+            }
+        } else {
+            double askPriceRate = strategyConfig.getDouble("ask_price_rate", 0.0002);
+            double price = topPrice;
+
+            // 允许挂卖单
+            price = price / (1 + accountActor.getCurrencyRate(other.getAccount()));
+            price = price * (1 + askPriceRate);
+            price = price * (1 + accountActor.getTakerRate(other.getAccount()));
+            price = price * (1 + accountActor.getMakerRate(info.getAccount()));
+            price = price * (1 + accountActor.getCurrencyRate(info.getAccount()));
+            price = Utils.ceil(price, info.getPricePrecision());
+
+            double baseOrderCancelRate = strategyConfig.getDouble("ask_cancel_rate", 0.001);
+            if (currentOrder.getPrice() < price ||
+                    currentOrder.getPrice() > price * (1 + baseOrderCancelRate)) {
+                currentOrder.setState(OrderState.CANCELLING);
+                long startCancelTime = System.currentTimeMillis();
+                accountActor.asyncCancelOrder(currentOrder).thenAccept(cancelled -> {
+                    if (cancelled) {
+                        currentOrder.setState(OrderState.CANCELLED);
+                        long currentTime = System.currentTimeMillis();
+                        logger.info("{}: {}: cancelled ask order: {}",
+                                currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
+                    }
+                });
+                lastOrderTimeMap.put(info.getAccount() + OrderSide.SELL, System.currentTimeMillis());
+            }
+        }
+
     }
 
 
