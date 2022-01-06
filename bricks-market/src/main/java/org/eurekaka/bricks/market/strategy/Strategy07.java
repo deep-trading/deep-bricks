@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -78,7 +79,7 @@ public class Strategy07 implements Strategy {
 
         lastOrderTimeMap = new ConcurrentHashMap<>();
 
-        filledOrderSize = new ConcurrentHashMap<>();
+        filledOrderSize = new HashMap<>();
     }
 
 
@@ -194,12 +195,6 @@ public class Strategy07 implements Strategy {
             logger.info("ask order2: {}", askOrder2);
         }
 
-        // 清理订单通知记录
-        filledOrderSize.entrySet().removeIf(e ->
-                (bidOrder1 == null || !e.getKey().equals(bidOrder1.getClientOrderId())) &&
-                (askOrder1 == null || !e.getKey().equals(askOrder1.getClientOrderId())) &&
-                (bidOrder2 == null || !e.getKey().equals(bidOrder2.getClientOrderId())) &&
-                (askOrder2 == null || !e.getKey().equals(askOrder2.getClientOrderId())));
 
         // 检查当前的对冲订单
         orderTracker.track();
@@ -232,6 +227,13 @@ public class Strategy07 implements Strategy {
     @Override
     public void notify(Notification notification) throws StrategyException {
         if (notification instanceof OrderNotification) {
+            // 避免锁竞争，每次清理order size map
+            filledOrderSize.entrySet().removeIf(e ->
+                    (bidOrder1 == null || !e.getKey().equals(bidOrder1.getClientOrderId())) &&
+                            (askOrder1 == null || !e.getKey().equals(askOrder1.getClientOrderId())) &&
+                            (bidOrder2 == null || !e.getKey().equals(bidOrder2.getClientOrderId())) &&
+                            (askOrder2 == null || !e.getKey().equals(askOrder2.getClientOrderId())));
+
             OrderNotification orderNotify = (OrderNotification) notification;
             if (orderNotify.getFilledSize() > 0) {
                 logger.info("{}: received order notify: {}", System.currentTimeMillis() - timeCounter, orderNotify);
@@ -261,8 +263,11 @@ public class Strategy07 implements Strategy {
 //                    }
                 }
                 if (order != null) {
+                    long startTime = System.currentTimeMillis();
                     orderTracker.submit(order).thenAccept(o -> {
-                        logger.info("{}: made trade hedging order: {}", System.currentTimeMillis() - timeCounter, o);
+                        long currentTime = System.currentTimeMillis();
+                        logger.info("{}: {} made trade hedging order: {}",
+                                currentTime - timeCounter, currentTime - startTime, o);
                     });
                 }
             }
@@ -306,7 +311,10 @@ public class Strategy07 implements Strategy {
                 logger.info("too small order filled size diff: {}, order: {}", sizeDiff, orderNotify);
                 return null;
             }
-            filledOrderSize.put(orderNotify.getClientOrderId(), orderNotify.getFilledSize());
+            if (orderNotify.getSize() > orderNotify.getFilledSize()) {
+                filledOrderSize.put(orderNotify.getClientOrderId(), orderNotify.getFilledSize());
+            }
+            logger.info("{}: generate market hedging order 1: ", System.currentTimeMillis() - timeCounter);
 
             // 记录所有成交信息
             OrderSide side = OrderSide.BUY;
@@ -337,6 +345,8 @@ public class Strategy07 implements Strategy {
 
                 price = Utils.ceil(price, info.getPricePrecision());
             }
+
+            logger.info("{}: generate market hedging order 2: ", System.currentTimeMillis() - timeCounter);
 
 
             OrderType orderType = OrderType.LIMIT_GTC;
@@ -415,21 +425,24 @@ public class Strategy07 implements Strategy {
                 String clientOrderId = "_" + info.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
+                long startTime = System.currentTimeMillis();
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
                     if (newOrder == null || OrderStatus.EXPIRED.equals(newOrder.getStatus()) ||
                             OrderStatus.CANCELLED.equals(newOrder.getStatus())) {
                         // 此时订单失效/取消，可以直接设置本地订单状态为cancelled
                         order.setState(OrderState.CANCELLED);
                     } else {
+                        long currentTime = System.currentTimeMillis();
                         if (order.getState().equals(OrderState.SUBMITTING)) {
                             order.setState(OrderState.SUBMITTED);
-                            logger.info("{}: made new order: {}", System.currentTimeMillis() - timeCounter, newOrder);
+                            logger.info("{}: {} made new order: {}",
+                                    currentTime - timeCounter, currentTime - startTime, newOrder);
                         } else if (order.getState().equals(OrderState.CANCELLING) ||
                                 order.getState().equals(OrderState.CANCELLED)) {
                             // 状态为cancelled订单，也可能还未真正取消
                             // 再次取消订单，保证订单撤销
-                            logger.info("{}: cancelling submitted order: {}",
-                                    System.currentTimeMillis() - timeCounter, newOrder);
+                            logger.info("{}: {} cancelling submitted order: {}",
+                                    currentTime - timeCounter, currentTime - startTime, newOrder);
                             try {
                                 accountActor.asyncCancelOrder(order).thenAccept(cancelled -> {
                                     order.setState(OrderState.CANCELLED);
