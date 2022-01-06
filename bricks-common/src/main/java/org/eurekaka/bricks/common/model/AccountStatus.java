@@ -27,10 +27,10 @@ public class AccountStatus {
     private final Map<String, List<KLineValue>> klineValues;
 
     // 大堆，first entry key 价格最高
-    private final Map<String, TreeMap<Double, Double>> bidOrderBooks;
+    private volatile Map<String, TreeMap<Double, Double>> bidOrderBooks;
 
     // 小堆，first entry key 价格最低
-    private final Map<String, TreeMap<Double, Double>> askOrderBooks;
+    private volatile Map<String, TreeMap<Double, Double>> askOrderBooks;
 
     // 买一
     private final Map<String, Double> topBids;
@@ -55,15 +55,15 @@ public class AccountStatus {
     public AccountStatus() {
         this.symbols = new ConcurrentHashMap<>();
         this.netValues = new ConcurrentHashMap<>();
-        this.bidOrderBooks = new ConcurrentHashMap<>();
-        this.askOrderBooks = new ConcurrentHashMap<>();
+        this.bidOrderBooks = new HashMap<>();
+        this.askOrderBooks = new HashMap<>();
         this.markUsdt = 1D;
         this.currencyRate = 0;
         this.balances = new ConcurrentHashMap<>();
         this.klineValues = new ConcurrentHashMap<>();
         this.orderBookValues = new ConcurrentHashMap<>();
-        this.topBids = new ConcurrentHashMap<>();
-        this.topAsks = new ConcurrentHashMap<>();
+        this.topBids = new HashMap<>();
+        this.topAsks = new HashMap<>();
     }
 
     public Map<String, String> getSymbols() {
@@ -131,27 +131,28 @@ public class AccountStatus {
         // 更新原有的order book
         if (orderBookValues.containsKey(symbol)) {
             // 缓存order book value
-            synchronized (orderBookValues.get(symbol)) {
-                LinkedList<OrderBookValue> bookValues = orderBookValues.get(symbol);
-                if (!bookValues.isEmpty() &&
-                        orderBookValue.firstUpdateId != bookValues.getLast().lastUpdateId + 1) {
-                    // 此时id序列号不连续，重新构建order book
-                    bookValues.clear();
-                    return false;
-                }
-                bookValues.add(orderBookValue);
+//            synchronized (orderBookValues.get(symbol)) {
+//
+//            }
+            LinkedList<OrderBookValue> bookValues = orderBookValues.get(symbol);
+            if (!bookValues.isEmpty() &&
+                    orderBookValue.firstUpdateId != bookValues.getLast().lastUpdateId + 1) {
+                // 此时id序列号不连续，重新构建order book
+                bookValues.clear();
+                return false;
             }
+            bookValues.add(orderBookValue);
 
             if (!orderBookValue.bids.isEmpty()) {
-                synchronized (bidOrderBooks.get(symbol)) {
-                    updateOrderBookValuePair(bidOrderBooks.get(symbol), orderBookValue.bids);
-                }
+//                synchronized (bidOrderBooks.get(symbol)) {
+//                }
+                updateOrderBookValuePair(bidOrderBooks.get(symbol), orderBookValue.bids);
             }
 
             if (!orderBookValue.asks.isEmpty()) {
-                synchronized (askOrderBooks.get(symbol)) {
-                    updateOrderBookValuePair(askOrderBooks.get(symbol), orderBookValue.asks);
-                }
+//                synchronized (askOrderBooks.get(symbol)) {
+//                }
+                updateOrderBookValuePair(askOrderBooks.get(symbol), orderBookValue.asks);
             }
         }
         return true;
@@ -204,15 +205,15 @@ public class AccountStatus {
     public void updateOrderBook(String symbol, List<OrderBookValue.PriceSizePair> bidPairs,
                                List<OrderBookValue.PriceSizePair> askPairs) {
         if (!bidPairs.isEmpty()) {
-            synchronized (bidOrderBooks.get(symbol)) {
-                updateOrderBookValuePair(bidOrderBooks.get(symbol), bidPairs);
-            }
+//            synchronized (bidOrderBooks.get(symbol)) {
+//            }
+            updateOrderBookValuePair(bidOrderBooks.get(symbol), bidPairs);
         }
 
         if (!askPairs.isEmpty()) {
-            synchronized (askOrderBooks.get(symbol)) {
-                updateOrderBookValuePair(askOrderBooks.get(symbol), askPairs);
-            }
+//            synchronized (askOrderBooks.get(symbol)) {
+//            }
+            updateOrderBookValuePair(askOrderBooks.get(symbol), askPairs);
         }
     }
 
@@ -245,24 +246,26 @@ public class AccountStatus {
     private void updateOrderBookTicker(Map<String, TreeMap<Double, Double>> source, String symbol, double key, double value) {
         if (source.containsKey(symbol) && !source.get(symbol).isEmpty()) {
             TreeMap<Double, Double> map = source.get(symbol);
+
             if (map.comparator().compare(map.firstKey(), key) >= 0) {
                 return;
             }
 
-            synchronized (source.get(symbol)) {
-                Iterator<Map.Entry<Double, Double>> iterator = source.get(symbol).entrySet().iterator();
-                while (iterator.hasNext()) {
-                    Map.Entry<Double, Double> it = iterator.next();
-                    if (map.comparator().compare(it.getKey(), key) <= 0) {
+//            synchronized (source.get(symbol)) {
+//
+//            }
+            Iterator<Map.Entry<Double, Double>> iterator = source.get(symbol).entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<Double, Double> it = iterator.next();
+                if (map.comparator().compare(it.getKey(), key) < 0) {
 //                        System.out.println("remove key: " + it.getKey() + ", current: " + key);
-                        iterator.remove();
-                    } else {
-                        break;
-                    }
+                    iterator.remove();
+                } else {
+                    break;
                 }
-                if (!iterator.hasNext()) {
-                    map.put(key, value);
-                }
+            }
+            if (!iterator.hasNext()) {
+                map.put(key, value);
             }
         }
     }

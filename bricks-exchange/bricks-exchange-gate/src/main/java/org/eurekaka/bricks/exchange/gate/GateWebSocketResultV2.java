@@ -6,6 +6,8 @@ public class GateWebSocketResultV2 {
 
     @JsonProperty("s")
     public String contract;
+    @JsonProperty("t")
+    public long time;
 
     @JsonProperty("b")
     public double bidPrice;

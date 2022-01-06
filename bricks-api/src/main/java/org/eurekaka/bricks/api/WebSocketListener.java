@@ -56,14 +56,21 @@ public abstract class WebSocketListener<A extends AccountStatus, B extends ExApi
             for (CharSequence part : parts) {
                 text.append(part);
             }
-            accumulatedMessage.completeAsync(() -> {
-                try {
-                    processWholeText(webSocket, text.toString());
-                } catch (Throwable e) {
-                    logger.error("failed to process message: {}", text, e);
-                }
-                return null;
-            }, executor);
+            long startTime = System.currentTimeMillis();
+//            accumulatedMessage.completeAsync(() -> {
+//                return null;
+//            }, executor);
+            String message = text.toString();
+            try {
+                processWholeText(webSocket, message);
+            } catch (Throwable e) {
+                logger.error("failed to process message: {}", text, e);
+            }
+            long timeCost = System.currentTimeMillis() - startTime;
+            if (timeCost > 1) {
+                logger.info("time cost: {}, message: {}", timeCost, message);
+            }
+            accumulatedMessage.complete(null);
             parts.clear();
             CompletionStage<?> cf = accumulatedMessage;
             accumulatedMessage = new CompletableFuture<>();

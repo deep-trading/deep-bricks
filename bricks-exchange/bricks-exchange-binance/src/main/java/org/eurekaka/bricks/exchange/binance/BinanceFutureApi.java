@@ -49,7 +49,7 @@ public class BinanceFutureApi implements FutureExApi {
             BinanceRestV1 result = reader.readValue(response.body());
 
             if (result.listenKey == null) {
-                throw new Exception("listenKey is null");
+                throw new Exception("listenKey is null: " + response.body());
             }
             BinanceSocketSub sub = new BinanceSocketSub("SUBSCRIBE", result.listenKey);
             return Utils.mapper.writeValueAsString(sub);

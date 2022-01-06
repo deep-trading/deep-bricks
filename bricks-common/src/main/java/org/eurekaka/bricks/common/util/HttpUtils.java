@@ -42,15 +42,13 @@ public class HttpUtils {
                             httpProxyHost, Integer.parseInt(httpProxyPort))));
         }
 
-        if (Boolean.parseBoolean(properties.get("http_version_2"))) {
-            httpClientBuilder.version(HttpClient.Version.HTTP_2);
-        } else {
+        if (Boolean.parseBoolean(properties.get("http_version_1"))) {
             httpClientBuilder.version(HttpClient.Version.HTTP_1_1);
         }
 
         // executors
         int httpConnectThreads = Integer.parseInt(
-                properties.getOrDefault("http_connect_threads", "64"));
+                properties.getOrDefault("http_connect_threads", "8"));
 //        ThreadPoolExecutor executor = new ThreadPoolExecutor(
 //                0, httpConnectThreads, 120L, TimeUnit.SECONDS,
 //                new SynchronousQueue<>());

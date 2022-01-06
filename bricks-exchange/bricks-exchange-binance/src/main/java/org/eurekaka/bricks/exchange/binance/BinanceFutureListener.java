@@ -38,6 +38,8 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         String eventName = node.get("e").asText();
         if ("depthUpdate".equals(eventName)) {
             BinanceWebSocketMsgV2 msg = reader1.readValue(node);
+//            logger.info("book ticker, elapsed time: {}, message: {}",
+//                    System.currentTimeMillis() - msg.eventTime, message);
 //                bidPrices.put(msg.symbol, msg.getLastBidPrice());
 //                sendLastPrice(new ExLastPrice(name, msg.symbol, "bid", msg.getLastBidPrice()));
 //                askPrices.put(msg.symbol, msg.getLastAskPrice());
@@ -85,6 +87,8 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
             // 使用bookTicker更新 order book 的买一卖一
 //            logger.info("bookTicker message: {}", message);
             SocketBookTicker msg = reader2.readValue(node);
+//            logger.info("book ticker, elapsed time: {}, message: {}",
+//                    System.currentTimeMillis() - msg.eventTime, message);
 
             if (msg.bidPrice > 0 && msg.bidSize > 0) {
                 accountStatus.updateBidOrderBookTicker(msg.symbol, msg.bidPrice, msg.bidSize);
@@ -138,6 +142,8 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
             } else if ("ORDER_TRADE_UPDATE".equals(msg.eventName)) {
                 BinanceOrderUpdate update = msg.orderUpdate;
 //                logger.debug("order trade update: {}", message);
+                logger.info("order message, elapsed time: {}, message: {}",
+                    System.currentTimeMillis() - msg.eventTime, message);
                 if (accountStatus.getNotificationQueue() != null) {
 //                    System.out.println(message);
                     String name = accountStatus.getSymbols().get(update.symbol);
@@ -210,6 +216,8 @@ public class BinanceFutureListener extends WebSocketListener<FutureAccountStatus
         public long lastUpdateId;
         @JsonProperty("pu")
         public long parentUpdateId;
+        @JsonProperty("E")
+        public long eventTime;
 
 
         public BinanceWebSocketMsgV2() {

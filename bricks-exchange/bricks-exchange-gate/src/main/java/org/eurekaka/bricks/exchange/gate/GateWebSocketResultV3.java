@@ -10,6 +10,8 @@ class GateWebSocketResultV3 {
     @JsonAlias("contract")
     @JsonProperty("s")
     public String symbol;
+    @JsonProperty("t")
+    public long time;
     @JsonProperty("U")
     public long firstUpdateId;
     @JsonProperty("u")
