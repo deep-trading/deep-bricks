@@ -58,6 +58,8 @@ public class ExAction<T> {
         GET_CURRENT_ORDER,
         GET_BID_DEPTH_PRICE,
         GET_ASK_DEPTH_PRICE,
+        GET_BID_TOP_PRICE,
+        GET_ASK_TOP_PRICE,
 
         // 转换统一计价货币参数
         GET_MARK_USDT,

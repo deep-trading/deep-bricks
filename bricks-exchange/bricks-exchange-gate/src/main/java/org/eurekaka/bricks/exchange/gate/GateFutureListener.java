@@ -135,8 +135,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
                 accountStatus.updateTopBid(result.contract, accountConfig.getName(), result.bidPrice);
             }
             if (result.askPrice > 0 && result.askSize != 0) {
-                accountStatus.updateAskOrderBookTicker(result.contract,
-                        result.askPrice, api.getSize(result.contract, result.askSize));
+//                accountStatus.updateAskOrderBookTicker(result.contract,
+//                        result.askPrice, api.getSize(result.contract, result.askSize));
                 accountStatus.updateTopAsk(result.contract, accountConfig.getName(), result.askPrice);
             }
 //            long timer = System.currentTimeMillis() - start;

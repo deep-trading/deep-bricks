@@ -61,6 +61,15 @@ public class AccountActor {
         return null;
     }
 
+    public double getBidTopPrice(String account, String name, String symbol) throws StrategyException {
+        ExMessage<?> msg = accountManager.getAccount(account).process(new ExAction<>(
+                ExAction.ActionType.GET_BID_TOP_PRICE, new ActionPair(name, symbol)));
+        if (msg.getType().equals(ExMessage.ExMsgType.RIGHT)) {
+            return (double) msg.getData();
+        }
+        throw new StrategyException("failed to get bid top price", (Exception) msg.getData());
+    }
+
     public DepthPrice getAskDepthPrice(Info0 info) throws StrategyException {
         return getAskDepthPrice(info, info.getInt("depth_qty", 79));
     }
@@ -80,6 +89,15 @@ public class AccountActor {
             return (DepthPrice) msg.getData();
         }
         return null;
+    }
+
+    public double getAskTopPrice(String account, String name, String symbol) throws StrategyException {
+        ExMessage<?> msg = accountManager.getAccount(account).process(new ExAction<>(
+                ExAction.ActionType.GET_ASK_TOP_PRICE, new ActionPair(name, symbol)));
+        if (msg.getType().equals(ExMessage.ExMsgType.RIGHT)) {
+            return (double) msg.getData();
+        }
+        throw new StrategyException("failed to get ask top price", (Exception) msg.getData());
     }
 
     public NetValue getNetValue(Info0 info) throws StrategyException {

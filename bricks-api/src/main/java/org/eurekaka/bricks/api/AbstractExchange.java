@@ -223,6 +223,10 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                     return getBidDepthPrice((DepthPricePair) action.getData());
                 case GET_ASK_DEPTH_PRICE:
                     return getAskDepthPrice((DepthPricePair) action.getData());
+                case GET_BID_TOP_PRICE:
+                    return getBidTopPrice((ActionPair) action.getData());
+                case GET_ASK_TOP_PRICE:
+                    return getAskTopPrice((ActionPair) action.getData());
 
                 case GET_MARK_USDT:
                     return new ExMessage<>(ExMessage.ExMsgType.RIGHT, accountStatus.getMarkUsdt());
@@ -558,6 +562,21 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 accountStatus.getAskOrderBooks().get(depthPricePair.symbol));
         return new ExMessage<>(ExMessage.ExMsgType.ERROR);
     }
+
+    protected ExMessage<Double> getBidTopPrice(ActionPair pair) {
+        if (accountStatus.getTopBids().containsKey(pair.symbol)) {
+            return new ExMessage<>(ExMessage.ExMsgType.RIGHT, accountStatus.getTopBids().get(pair.symbol));
+        }
+        return new ExMessage<>(ExMessage.ExMsgType.ERROR);
+    }
+
+    protected ExMessage<Double> getAskTopPrice(ActionPair pair) {
+        if (accountStatus.getTopAsks().containsKey(pair.symbol)) {
+            return new ExMessage<>(ExMessage.ExMsgType.RIGHT, accountStatus.getTopAsks().get(pair.symbol));
+        }
+        return new ExMessage<>(ExMessage.ExMsgType.ERROR);
+    }
+
 
     protected ExMessage<Void> transferAsset(AssetTransfer transfer) throws ExApiException {
         api.transferAsset(transfer);

@@ -27,15 +27,15 @@ public class AccountStatus {
     private final Map<String, List<KLineValue>> klineValues;
 
     // 大堆，first entry key 价格最高
-    private volatile Map<String, TreeMap<Double, Double>> bidOrderBooks;
+    private final Map<String, TreeMap<Double, Double>> bidOrderBooks;
 
     // 小堆，first entry key 价格最低
-    private volatile Map<String, TreeMap<Double, Double>> askOrderBooks;
+    private final Map<String, TreeMap<Double, Double>> askOrderBooks;
 
     // 买一
-    private final Map<String, Double> topBids;
+    private volatile Map<String, Double> topBids;
     // 卖一
-    private final Map<String, Double> topAsks;
+    private volatile Map<String, Double> topAsks;
 
     // websocket 接收的order book value，用于缓存最近一段时间的订单簿数据
     private final Map<String, LinkedList<OrderBookValue>> orderBookValues;
@@ -80,6 +80,14 @@ public class AccountStatus {
 
     public Map<String, TreeMap<Double, Double>> getAskOrderBooks() {
         return askOrderBooks;
+    }
+
+    public Map<String, Double> getTopBids() {
+        return topBids;
+    }
+
+    public Map<String, Double> getTopAsks() {
+        return topAsks;
     }
 
     public Map<String, LinkedList<OrderBookValue>> getOrderBookValues() {
