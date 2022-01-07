@@ -239,28 +239,14 @@ public class Strategy07 implements Strategy {
                 logger.info("{}: received order notify: {}", System.currentTimeMillis() - timeCounter, orderNotify);
                 // 确认成交订单来自于当前四个挂单
                 Order order = null;
-                if (bidOrder1 != null && orderNotify.getClientOrderId().equals(bidOrder1.getClientOrderId()) ||
-                        askOrder1 != null && orderNotify.getClientOrderId().equals(askOrder1.getClientOrderId())) {
-                    order = generateMarketHedgingOrder(orderNotify, info1, info2);
-//                    if (order != null && order.getQuantity() > 0) {
-//                        long base = posQuantity1;
-//                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
-//                            posQuantity1 = base + order.getQuantity();
-//                        } else {
-//                            posQuantity1 = base - order.getQuantity();
-//                        }
-//                    }
-                } else if (bidOrder2 != null && orderNotify.getClientOrderId().equals(bidOrder2.getClientOrderId()) ||
-                        askOrder2 != null && orderNotify.getClientOrderId().equals(askOrder2.getClientOrderId())) {
-                    order = generateMarketHedgingOrder(orderNotify, info2, info1);
-//                    if (order != null && order.getQuantity() > 0) {
-//                        long base = posQuantity2;
-//                        if (orderNotify.getSide().equals(OrderSide.BUY)) {
-//                            posQuantity2 = base + order.getQuantity();
-//                        } else {
-//                            posQuantity2 = base - order.getQuantity();
-//                        }
-//                    }
+                if (bidOrder1 != null && orderNotify.getClientOrderId().equals(bidOrder1.getClientOrderId())) {
+                    order = generateMarketHedgingOrder(orderNotify, info1, info2, bidOrder1.getState());
+                } else if (askOrder1 != null && orderNotify.getClientOrderId().equals(askOrder1.getClientOrderId())) {
+                    order = generateMarketHedgingOrder(orderNotify, info1, info2, askOrder1.getState());
+                } else if (bidOrder2 != null && orderNotify.getClientOrderId().equals(bidOrder2.getClientOrderId())) {
+                    order = generateMarketHedgingOrder(orderNotify, info2, info1, bidOrder2.getState());
+                } else if (askOrder2 != null && orderNotify.getClientOrderId().equals(askOrder2.getClientOrderId())) {
+                    order = generateMarketHedgingOrder(orderNotify, info2, info1, askOrder2.getState());
                 }
                 if (order != null) {
                     long startTime = System.currentTimeMillis();
@@ -290,10 +276,12 @@ public class Strategy07 implements Strategy {
         }
     }
 
-    private Order generateMarketHedgingOrder(OrderNotification orderNotify, Info0 info, Info0 other) {
+    private Order generateMarketHedgingOrder(OrderNotification orderNotify, Info0 info, Info0 other,
+                                             OrderState orderState) {
         double sizeDiff = orderNotify.getFilledSize() -
                 filledOrderSize.getOrDefault(orderNotify.getClientOrderId(), 0D);
         if (sizeDiff > 0) {
+            logger.info("{}: generate market hedging order 0: ", System.currentTimeMillis() - timeCounter);
             long quantity = Math.round(sizeDiff * orderNotify.getPrice());
             if (quantity < minOrderQuantity) {
                 logger.info("too small order filled size diff: {}, order: {}", sizeDiff, orderNotify);
@@ -336,9 +324,10 @@ public class Strategy07 implements Strategy {
 
             logger.info("{}: generate market hedging order 2: ", System.currentTimeMillis() - timeCounter);
 
-
             OrderType orderType = OrderType.LIMIT_GTC;
-            if (isDirect) {
+            // 订单已经撤销或正在撤销时，直接市价单对冲
+            if (isDirect || OrderState.CANCELLING.equals(orderState) ||
+                    OrderState.CANCELLED.equals(orderState)) {
                 orderType = OrderType.MARKET;
             }
 
@@ -375,6 +364,9 @@ public class Strategy07 implements Strategy {
                             long currentTime = System.currentTimeMillis();
                             logger.info("{}: {}: loop cancelled bid order: {}",
                                     currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
+                        } else {
+                            // 若失败则恢复，等待下次撤单
+                            currentOrder.setState(OrderState.SUBMITTED);
                         }
                     });
                     // 控制撤单后，一定时间内不再下单
@@ -393,6 +385,8 @@ public class Strategy07 implements Strategy {
                             long currentTime = System.currentTimeMillis();
                             logger.info("{}: {}: loop cancelled ask order: {}",
                                     currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
+                        } else {
+                            currentOrder.setState(OrderState.SUBMITTED);
                         }
                     });
                     lastOrderTimeMap.put(info.getAccount() + side, System.currentTimeMillis());
@@ -548,6 +542,8 @@ public class Strategy07 implements Strategy {
                         long currentTime = System.currentTimeMillis();
                         logger.info("{}: {}: cancelled bid order: {}",
                                 currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
+                    } else {
+                        currentOrder.setState(OrderState.SUBMITTED);
                     }
                 });
                 // 控制撤单后，一定时间内不再下单
@@ -576,6 +572,8 @@ public class Strategy07 implements Strategy {
                         long currentTime = System.currentTimeMillis();
                         logger.info("{}: {}: cancelled ask order: {}",
                                 currentTime - timeCounter, currentTime - startCancelTime, currentOrder);
+                    } else {
+                        currentOrder.setState(OrderState.SUBMITTED);
                     }
                 });
                 lastOrderTimeMap.put(info.getAccount() + OrderSide.SELL, System.currentTimeMillis());

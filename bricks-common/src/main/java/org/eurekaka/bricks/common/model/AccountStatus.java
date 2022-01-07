@@ -33,9 +33,9 @@ public class AccountStatus {
     private final Map<String, TreeMap<Double, Double>> askOrderBooks;
 
     // 买一
-    private volatile Map<String, Double> topBids;
+    private final Map<String, Double> topBids;
     // 卖一
-    private volatile Map<String, Double> topAsks;
+    private final Map<String, Double> topAsks;
 
     // websocket 接收的order book value，用于缓存最近一段时间的订单簿数据
     private final Map<String, LinkedList<OrderBookValue>> orderBookValues;
