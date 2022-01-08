@@ -18,7 +18,7 @@ public class StopOrderTracker implements OrderTracker {
     private final static Logger logger = LoggerFactory.getLogger(StopOrderTracker.class);
 
     private final Map<String, CurrentOrder> trackingOrderMap;
-    private final Map<String, CurrentOrder> removedOrderMap;
+//    private final Map<String, CurrentOrder> removedOrderMap;
 
     private final Map<String, CurrentOrder> expiredOrderMap;
 
@@ -41,7 +41,7 @@ public class StopOrderTracker implements OrderTracker {
         this.strategyConfig = strategyConfig;
 
         this.trackingOrderMap = new ConcurrentHashMap<>();
-        this.removedOrderMap = new ConcurrentHashMap<>();
+//        this.removedOrderMap = new ConcurrentHashMap<>();
         this.expiredOrderMap = new ConcurrentHashMap<>();
     }
 
@@ -81,7 +81,7 @@ public class StopOrderTracker implements OrderTracker {
                     } else if (topPrice < order.getPrice()) {
                         logger.info("bid order should be filled, id: {}, ask price {} is lower than order price {}",
                                 order.getClientOrderId(), topPrice, order.getPrice());
-                        removedOrderMap.put(order.getClientOrderId(), order);
+                        expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     }
                 }
@@ -97,7 +97,7 @@ public class StopOrderTracker implements OrderTracker {
                     } else if (topPrice > order.getPrice()) {
                         logger.info("ask order should be filled, bid price {} is higher than order price {}",
                                 topPrice, order.getPrice());
-                        removedOrderMap.put(order.getClientOrderId(), order);
+                        expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     }
                 }
@@ -111,9 +111,9 @@ public class StopOrderTracker implements OrderTracker {
             }
         }
 
-        for (String clientOrderId : removedOrderMap.keySet()) {
-            trackingOrderMap.remove(clientOrderId);
-        }
+//        for (String clientOrderId : removedOrderMap.keySet()) {
+//            trackingOrderMap.remove(clientOrderId);
+//        }
         // 针对过期订单，先
         for (CurrentOrder currentOrder : expiredOrderMap.values()) {
             trackingOrderMap.remove(currentOrder.getClientOrderId());
@@ -130,7 +130,7 @@ public class StopOrderTracker implements OrderTracker {
             }
         }
 
-        removedOrderMap.clear();
+//        removedOrderMap.clear();
         expiredOrderMap.clear();
     }
 
