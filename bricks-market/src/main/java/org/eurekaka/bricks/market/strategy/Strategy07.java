@@ -113,6 +113,7 @@ public class Strategy07 implements Strategy {
         // 初始化订单跟踪器
         List<CurrentOrder> trackingOrders = new ArrayList<>();
         accountActor.asyncGetCurrentOrders(info1).thenAccept(currentOrders -> {
+            logger.info("not finished orders: {}", currentOrders);
             for (CurrentOrder currentOrder : currentOrders) {
                 if (currentOrder.getClientOrderId() != null) {
                     if (currentOrder.getClientOrderId().startsWith("_")) {
@@ -131,6 +132,7 @@ public class Strategy07 implements Strategy {
         });
 
         accountActor.asyncGetCurrentOrders(info2).thenAccept(currentOrders -> {
+            logger.info("not finished orders: {}", currentOrders);
             for (CurrentOrder currentOrder : currentOrders) {
                 if (currentOrder.getClientOrderId() != null) {
                     if (currentOrder.getClientOrderId().startsWith("_")) {
@@ -410,8 +412,10 @@ public class Strategy07 implements Strategy {
                 long startTime = System.currentTimeMillis();
                 accountActor.asyncMakeOrder(order).thenAccept(newOrder -> {
                     if (newOrder == null || OrderStatus.EXPIRED.equals(newOrder.getStatus()) ||
-                            OrderStatus.CANCELLED.equals(newOrder.getStatus())) {
+                            OrderStatus.CANCELLED.equals(newOrder.getStatus()) ||
+                            OrderStatus.REJECTED.equals(newOrder.getStatus())) {
                         // 此时订单失效/取消，可以直接设置本地订单状态为cancelled
+                        logger.error("failed to make order: {}", newOrder);
                         order.setState(OrderState.CANCELLED);
                     } else {
                         long currentTime = System.currentTimeMillis();
