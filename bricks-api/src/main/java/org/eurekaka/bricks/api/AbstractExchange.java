@@ -522,14 +522,15 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
 
 
     protected ExMessage<DepthPrice> getBidDepthPrice(DepthPricePair depthPricePair) throws ExApiException {
-        if (accountStatus.getBidOrderBooks().containsKey(depthPricePair.symbol) &&
-                accountStatus.getTopBids().containsKey(depthPricePair.symbol)) {
+        if (accountStatus.getBidOrderBooks().containsKey(depthPricePair.symbol)) {
             TreeMap<Double, Double> depths = accountStatus.getBidOrderBooks().get(depthPricePair.symbol);
             int sum1 = 0;
             double sum2 = 0;
+            double topPrice = accountStatus.getTopBids().getOrDefault(depthPricePair.symbol, 0D);
             for (Map.Entry<Double, Double> entry : depths.entrySet()) {
                 double price = entry.getKey();
-                if (price > accountStatus.getTopBids().get(depthPricePair.symbol)) {
+                if (topPrice > 0 && price > topPrice) {
+//                    logger.info("bid top price: {}, price: {}", topPrice, price);
                     continue;
                 }
                 int quantity = (int) Math.floor(price * entry.getValue());
@@ -541,20 +542,21 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 }
             }
         }
-        logger.warn("{} no enough depth: {}", depthPricePair.symbol,
+        logger.warn("{} bid no enough depth: {}", depthPricePair.symbol,
                 accountStatus.getBidOrderBooks().get(depthPricePair.symbol));
         return new ExMessage<>(ExMessage.ExMsgType.ERROR);
     }
 
     protected ExMessage<DepthPrice> getAskDepthPrice(DepthPricePair depthPricePair) {
-        if (accountStatus.getAskOrderBooks().containsKey(depthPricePair.symbol) &&
-                accountStatus.getTopAsks().containsKey(depthPricePair.symbol)) {
+        if (accountStatus.getAskOrderBooks().containsKey(depthPricePair.symbol)) {
             TreeMap<Double, Double> depths = accountStatus.getAskOrderBooks().get(depthPricePair.symbol);
             int sum1 = 0;
             double sum2 = 0;
+            double topPrice = accountStatus.getTopAsks().getOrDefault(depthPricePair.symbol, 0D);
             for (Map.Entry<Double, Double> entry : depths.entrySet()) {
                 double price = entry.getKey();
-                if (price < accountStatus.getTopAsks().get(depthPricePair.symbol)) {
+                if (topPrice > 0 && price < topPrice) {
+//                    logger.info("ask top price: {}, price: {}", topPrice, price);
                     continue;
                 }
                 int quantity = (int) Math.floor(price * entry.getValue());
@@ -566,7 +568,7 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 }
             }
         }
-        logger.warn("{} no enough depth: {}", depthPricePair.symbol,
+        logger.warn("{} ask no enough depth: {}", depthPricePair.symbol,
                 accountStatus.getAskOrderBooks().get(depthPricePair.symbol));
         return new ExMessage<>(ExMessage.ExMsgType.ERROR);
     }
