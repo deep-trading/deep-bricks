@@ -68,35 +68,36 @@ public class StopOrderTracker implements OrderTracker {
         for (CurrentOrder order : trackingOrderMap.values()) {
             // 根据价格检查是否需要移除订单
             // 处理风险订单
+            int quantity = (int) Math.round(order.getPrice() * (order.getSize() - order.getFilledSize()));
             if (OrderSide.BUY.equals(order.getSide())) {
                 // 买单，查看当前卖一价，是否触发风险价格
-                double topPrice = accountActor.getAskTopPrice(order.getAccount(),
-                        order.getName(), order.getSymbol());
-                if (topPrice != 0 && orderRiskRate > 0) {
-                    if (topPrice > order.getPrice() * (1 + orderRiskRate)) {
+                DepthPrice depthPrice = accountActor.getAskDepthPrice(order.getAccount(),
+                        order.getName(), order.getSymbol(), quantity);
+                if (depthPrice != null && orderRiskRate > 0) {
+                    if (depthPrice.price > order.getPrice() * (1 + orderRiskRate)) {
                         logger.info("bid order risk too high, order price: {}, ask price: {}",
-                                order.getPrice(), topPrice);
+                                order.getPrice(), depthPrice.price);
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
-                    } else if (topPrice < order.getPrice()) {
+                    } else if (depthPrice.price < order.getPrice()) {
                         logger.info("bid order should be filled, id: {}, ask price {} is lower than order price {}",
-                                order.getClientOrderId(), topPrice, order.getPrice());
+                                order.getClientOrderId(), depthPrice.price, order.getPrice());
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     }
                 }
             } else if (OrderSide.SELL.equals(order.getSide())) {
-                double topPrice = accountActor.getBidTopPrice(order.getAccount(),
-                        order.getName(), order.getSymbol());
-                if (topPrice != 0 && orderRiskRate > 0) {
-                    if (topPrice < order.getPrice() * (1 - orderRiskRate)) {
+                DepthPrice depthPrice = accountActor.getBidDepthPrice(order.getAccount(),
+                        order.getName(), order.getSymbol(), quantity);
+                if (depthPrice != null && orderRiskRate > 0) {
+                    if (depthPrice.price < order.getPrice() * (1 - orderRiskRate)) {
                         logger.info("ask order risk too high, id: {}, order price: {}, bid price: {}",
-                                order.getClientOrderId(), order.getPrice(), topPrice);
+                                order.getClientOrderId(), order.getPrice(), depthPrice.price);
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
-                    } else if (topPrice > order.getPrice()) {
+                    } else if (depthPrice.price > order.getPrice()) {
                         logger.info("ask order should be filled, bid price {} is higher than order price {}",
-                                topPrice, order.getPrice());
+                                depthPrice.price, order.getPrice());
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
                     }
@@ -178,8 +179,8 @@ public class StopOrderTracker implements OrderTracker {
                         logger.info("making order ignored, quantity: {}", quantity);
                         return;
                     }
-                    index = (index + 1) % 100000;
-                    String clientOrderId = currentOrder.getClientOrderId() + "_" + index;
+                    index = (index + 1) % 10;
+                    String clientOrderId = currentOrder.getClientOrderId() + index;
                     Order o = new Order(currentOrder.getAccount(), order.getName(), order.getSymbol(),
                             order.getSide(), OrderType.MARKET, size, order.getPrice(), quantity, clientOrderId);
                     try {
