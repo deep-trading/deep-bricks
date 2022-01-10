@@ -405,8 +405,8 @@ public class Strategy07 implements Strategy {
         // 若是可以下单
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
             if (checkOrderInterval(info.getAccount() + side)) {
-                orderIndex1 = (orderIndex1 + 1) % 1000;
-                String clientOrderId = "_" + info.getName() + "_" + System.currentTimeMillis() / 60000 + "_" + orderIndex1;
+                orderIndex1 = (orderIndex1 + 1) % 10000;
+                String clientOrderId = "_" + info.getName() + "_" + System.currentTimeMillis() / 3600000 + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
                 long startTime = System.currentTimeMillis();
