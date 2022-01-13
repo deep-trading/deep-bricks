@@ -279,11 +279,11 @@ public class Strategy07 implements Strategy {
     }
 
     private Order generateMarketHedgingOrder(OrderNotification orderNotify, Info0 info, Info0 other,
-                                             OrderState orderState) {
+                                             OrderState orderState) throws StrategyException {
         double sizeDiff = orderNotify.getFilledSize() -
                 filledOrderSize.getOrDefault(orderNotify.getClientOrderId(), 0D);
         if (sizeDiff > 0) {
-            logger.info("{}: generate market hedging order 0: ", System.currentTimeMillis() - timeCounter);
+//            logger.info("{}: generate market hedging order 0: ", System.currentTimeMillis() - timeCounter);
             long quantity = Math.round(sizeDiff * orderNotify.getPrice());
             if (quantity < minOrderQuantity) {
                 logger.info("too small order filled size diff: {}, order: {}", sizeDiff, orderNotify);
@@ -292,7 +292,27 @@ public class Strategy07 implements Strategy {
             if (orderNotify.getSize() > orderNotify.getFilledSize()) {
                 filledOrderSize.put(orderNotify.getClientOrderId(), orderNotify.getFilledSize());
             }
-            logger.info("{}: generate market hedging order 1: ", System.currentTimeMillis() - timeCounter);
+//            logger.info("{}: generate market hedging order 1: ", System.currentTimeMillis() - timeCounter);
+            // 分析深度情况
+            if (orderNotify.getSide().equals(OrderSide.BUY)) {
+                logger.info("{}: {} bid depth price: {}, top price: {}",
+                        System.currentTimeMillis() - timeCounter, info.getAccount(),
+                        accountActor.getBidDepthPrice(info, 0).price,
+                        accountActor.getBidTopPrice(info.getAccount(), info.getName(), info.getSymbol()));
+                logger.info("{}: {} bid depth price: {}, top price: {}",
+                        System.currentTimeMillis() - timeCounter, other.getAccount(),
+                        accountActor.getBidDepthPrice(other, 0).price,
+                        accountActor.getBidTopPrice(other.getAccount(), other.getName(), other.getSymbol()));
+            } else {
+                logger.info("{}: {} ask depth price: {}, top price: {}",
+                        System.currentTimeMillis() - timeCounter, info.getAccount(),
+                        accountActor.getAskDepthPrice(info, 0).price,
+                        accountActor.getAskTopPrice(info.getAccount(), info.getName(), info.getSymbol()));
+                logger.info("{}: {} ask depth price: {}, top price: {}",
+                        System.currentTimeMillis() - timeCounter, other.getAccount(),
+                        accountActor.getAskDepthPrice(other, 0).price,
+                        accountActor.getAskTopPrice(other.getAccount(), other.getName(), other.getSymbol()));
+            }
 
             // 记录所有成交信息
             OrderSide side = OrderSide.BUY;
@@ -324,7 +344,7 @@ public class Strategy07 implements Strategy {
                 price = Utils.ceil(price, info.getPricePrecision());
             }
 
-            logger.info("{}: generate market hedging order 2: ", System.currentTimeMillis() - timeCounter);
+//            logger.info("{}: generate market hedging order 2: ", System.currentTimeMillis() - timeCounter);
 
             OrderType orderType = OrderType.LIMIT_GTC;
             // 订单已经撤销或正在撤销时，直接市价单对冲
