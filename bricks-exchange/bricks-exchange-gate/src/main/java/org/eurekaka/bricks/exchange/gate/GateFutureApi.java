@@ -17,6 +17,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,12 +36,15 @@ public class GateFutureApi implements FutureExApi {
 
     private final AccountConfig accountConfig;
     private final HttpClient httpClient;
+    private final Duration timeout;
 
     private final Map<String, Double> contractQuantos;
 
     public GateFutureApi(AccountConfig accountConfig, HttpClient httpClient) {
         this.accountConfig = accountConfig;
         this.httpClient = httpClient;
+        this.timeout = Duration.ofMillis(Integer.parseInt(
+                accountConfig.getProperty("http_request_timeout", "1500")));
 
         this.contractQuantos = new ConcurrentHashMap<>();
 
@@ -214,6 +218,9 @@ public class GateFutureApi implements FutureExApi {
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
                 }
+            }).exceptionally(ex -> {
+                logger.error("failed to async make order, http request error", ex);
+                return null;
             });
         } catch (Exception e) {
             throw new ExApiException("failed to make order", e);
@@ -352,6 +359,9 @@ public class GateFutureApi implements FutureExApi {
                             return false;
                         }
                         return true;
+                    }).exceptionally(ex -> {
+                        logger.error("failed to async cancel order, http request error", ex);
+                        return false;
                     });
         } catch (Exception e) {
             throw new ExApiException("failed to cancel order", e);
@@ -523,7 +533,7 @@ public class GateFutureApi implements FutureExApi {
         } else {
             builder.method(method, HttpRequest.BodyPublishers.noBody());
         }
-        return builder.build();
+        return builder.timeout(timeout).build();
     }
 
     private List<GateRespDataV1> resolveResponse(HttpResponse<String> response) throws ExApiException {

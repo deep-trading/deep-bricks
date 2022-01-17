@@ -17,6 +17,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -30,11 +31,14 @@ public class BinanceFutureApi implements FutureExApi {
     private final AccountConfig accountConfig;
 
     private final ObjectReader reader;
+    private final Duration timeout;
 
     public BinanceFutureApi(AccountConfig accountConfig, HttpClient httpClient) {
         this.accountConfig = accountConfig;
         this.httpClient = httpClient;
         this.reader = Utils.mapper.reader().forType(BinanceRestV1.class);
+        this.timeout = Duration.ofMillis(Integer.parseInt(
+                accountConfig.getProperty("http_request_timeout", "1500")));
     }
 
     @Override
@@ -44,6 +48,7 @@ public class BinanceFutureApi implements FutureExApi {
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .POST(HttpRequest.BodyPublishers.noBody())
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .timeout(timeout)
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             BinanceRestV1 result = reader.readValue(response.body());
@@ -247,6 +252,7 @@ public class BinanceFutureApi implements FutureExApi {
             String url = generateSignedUrl("/fapi/v1/order", params);
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .POST(HttpRequest.BodyPublishers.noBody())
+                    .timeout(timeout)
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
                     .build();
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -262,6 +268,9 @@ public class BinanceFutureApi implements FutureExApi {
                         } catch (Exception e) {
                             throw new CompletionException("failed to parse body: " + response.body(), e);
                         }
+                        return null;
+                    }).exceptionally(ex -> {
+                        logger.error("failed to async make order, http request error", ex);
                         return null;
                     });
         } catch (Exception e) {
@@ -306,6 +315,7 @@ public class BinanceFutureApi implements FutureExApi {
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .GET()
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .timeout(timeout)
                     .build();
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenApply(response -> {
@@ -339,6 +349,7 @@ public class BinanceFutureApi implements FutureExApi {
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .GET()
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .timeout(timeout)
                     .build();
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
                 try {
@@ -370,6 +381,7 @@ public class BinanceFutureApi implements FutureExApi {
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .DELETE()
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .timeout(timeout)
                     .build();
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenApply(response -> {
@@ -387,6 +399,9 @@ public class BinanceFutureApi implements FutureExApi {
                             return false;
                         }
                         return true;
+                    }).exceptionally(ex -> {
+                        logger.error("failed to async cancel order, http request error", ex);
+                        return false;
                     });
         } catch (Exception e) {
             throw new ExApiException("failed to async cancel order", e);
@@ -561,6 +576,7 @@ public class BinanceFutureApi implements FutureExApi {
             HttpRequest request = HttpRequest.newBuilder(new URI(url))
                     .GET()
                     .header("X-MBX-APIKEY", accountConfig.getAuthKey())
+                    .timeout(timeout)
                     .build();
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenApply(response -> {
