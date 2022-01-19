@@ -49,13 +49,16 @@ public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, Ft
 
             OrderSide side = FtxUtils.getOrderSide(data.side);
 
+            long fillTime = FtxUtils.parseTimestampString(data.time);
+            logger.info("trade message, elapsed time: {}, message: {}",
+                    System.currentTimeMillis() - fillTime, message);
+
             if (accountStatus.getNotificationQueue() != null) {
                 // todo: client order id 不存在 fills 里
                 accountStatus.getNotificationQueue().add(new TradeNotification(
                         data.id, data.clientId, data.orderId, accountConfig.getName(), name,
                         data.future, side, type, data.price, data.size,
-                        data.price * data.size, "USD", data.fee,
-                        FtxUtils.parseTimestampString(data.time)));
+                        data.price * data.size, "USD", data.fee, fillTime));
             }
 
             // 更新positions
@@ -88,7 +91,7 @@ public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, Ft
 
             if (accountStatus.getNotificationQueue() != null) {
                 accountStatus.getNotificationQueue().add(new OrderNotification(
-                        data.id, name, data.future, accountConfig.getName(),
+                        data.id, name, data.market, accountConfig.getName(),
                         side, type, data.size, data.price, data.filledSize,
                         data.avgFillPrice, data.clientId,
                         FtxUtils.getOrderStatus(data.status, data.size, data.filledSize),
@@ -108,11 +111,12 @@ public class FtxFutureListener extends WebSocketListener<FutureAccountStatus, Ft
                 accountStatus.getNetValues().put(msg.market,
                         new NetValue(msg.market, accountConfig.getName(), price));
                 if (currencyRateSymbol.equals(msg.market)) {
-                    accountStatus.setCurrencyRate(data.last - 1);
+                    if (Math.abs(data.last - 1) < 0.001) {
+                        accountStatus.setCurrencyRate(data.last - 1);
+                    }
                 }
-                // 更新market
-                accountStatus.updateBidOrderBookTicker(msg.market, data.bid, data.bidSize);
-                accountStatus.updateBidOrderBookTicker(msg.market, data.ask, data.askSize);
+                accountStatus.updateTopBid(msg.market, accountConfig.getName(), data.bid);
+                accountStatus.updateTopAsk(msg.market, accountConfig.getName(), data.ask);
             }
         } else if ("orderbook".equals(msg.channel)) {
             if ("partial".equals(data.action)) {

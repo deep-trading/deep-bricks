@@ -20,6 +20,7 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -36,6 +37,7 @@ public class FtxFutureApi implements FutureExApi {
     private final String subAccount;
     private final ObjectReader reader;
     private final ObjectReader reader2;
+    private final Duration timeout;
 
     public FtxFutureApi(AccountConfig accountConfig, HttpClient httpClient) {
         this.accountConfig = accountConfig;
@@ -46,6 +48,8 @@ public class FtxFutureApi implements FutureExApi {
 
         reader = Utils.mapper.reader().forType(FtxRestResult.class);
         reader2 = Utils.mapper.reader().forType(new TypeReference<List<FtxRestResult>>() {});
+        this.timeout = Duration.ofMillis(Integer.parseInt(
+                accountConfig.getProperty("http_request_timeout", "1500")));
     }
 
     @Override
@@ -401,6 +405,9 @@ public class FtxFutureApi implements FutureExApi {
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
                 }
+            }).exceptionally(ex -> {
+                logger.error("failed to async make order, http request error", ex);
+                return null;
             });
         } catch (Exception e) {
             throw new ExApiException("failed to make an order: " + order, e);
@@ -461,6 +468,9 @@ public class FtxFutureApi implements FutureExApi {
                 } catch (Exception e) {
                     throw new CompletionException("failed to parse response body: " + response.body(), e);
                 }
+            }).exceptionally(ex -> {
+                logger.error("failed to async cancell order, http request error", ex);
+                return false;
             });
         } catch (Exception e) {
             throw new ExApiException("failed to cancel order", e);
@@ -606,6 +616,7 @@ public class FtxFutureApi implements FutureExApi {
             } else {
                 builder.method(method, HttpRequest.BodyPublishers.noBody());
             }
+            builder.timeout(timeout);
             return builder.build();
         } catch (Exception e) {
             throw new ExApiException("failed to generate signed request: " + path, e);

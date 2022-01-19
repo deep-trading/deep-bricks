@@ -23,6 +23,7 @@ public class FtxFutureApiTest {
 //        accountConfig.setProperty("sub_account", "test");
         accountConfig.setProperty("http_proxy_host", "localhost");
         accountConfig.setProperty("http_proxy_port", "8123");
+        accountConfig.setProperty("http_request_timeout", "5000");
 
 //        HttpClient httpClient = HttpClient.newHttpClient();
         HttpClient httpClient = HttpUtils.initializeHttpClient(accountConfig.getProperties());
@@ -70,7 +71,7 @@ public class FtxFutureApiTest {
 //                OrderSide.SELL, OrderType.MARKET, 1, 4.1, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 3.41, 9));
-        System.out.println("order: " + api.asyncCancelOrder(symbol, "id1").get());
+        System.out.println("order: " + api.asyncCancelOrder(symbol, "EOS_USDT_1642577556308").get());
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.SELL, OrderType.LIMIT_GTC, 1, 3.9, 9));
 //        testAsyncOrderApi(api, new Order("n1", name, symbol,
