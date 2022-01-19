@@ -21,11 +21,11 @@ public class AccountManagerImpl implements AccountManager {
 
     private final Map<String, Exchange> accountMap;
     private final AccountConfigState accountConfigState;
-    private final InfoState<? extends Info<?>, ?> infoState;
+    private final InfoState<Info0, ?> infoState;
     private final BlockingQueue<Notification> blockingQueue;
 
     public AccountManagerImpl(AccountConfigState accountConfigState,
-                              InfoState<? extends Info<?>, ?> infoState) {
+                              InfoState<Info0, ?> infoState) {
         this.accountConfigState = accountConfigState;
         this.accountMap = new ConcurrentHashMap<>();
         this.blockingQueue = new LinkedBlockingQueue<>();
@@ -59,6 +59,29 @@ public class AccountManagerImpl implements AccountManager {
 
         for (Info<?> info : infoState.getInfos()) {
             addSymbol(info);
+        }
+
+        // 检查所有symbols准备完成
+        boolean isReady = false;
+        while (!isReady) {
+            isReady = true;
+            for (Info0 info : infoState.getInfos()) {
+                Exchange ex = accountMap.get(info.getAccount());
+                if (ex != null && info.getType() > 0 && ex.isAlive()) {
+                    ExMessage<?> message = ex.process(new ExAction<>(ExAction.ActionType.GET_BID_DEPTH_PRICE,
+                            new DepthPricePair(info.getName(), info.getSymbol(), 5)));
+                    if (message.getType() == ExMessage.ExMsgType.ERROR) {
+                        isReady = false;
+                        logger.info("waiting, exchange manager is not ready with all exchanges," +
+                                " exchange {}, info name {}", ex.getName(), info.getName());
+                        try {
+                            Thread.sleep(300);
+                        } catch (InterruptedException e) {
+                            logger.error("failed to start exchange manager, interrupted.");
+                        }
+                    }
+                }
+            }
         }
 
         postStart();
