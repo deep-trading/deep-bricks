@@ -124,7 +124,7 @@ public class Strategy07 implements Strategy {
                         } catch (StrategyException e) {
                             throw new CompletionException("failed to init cancel order: " + currentOrder, e);
                         }
-                    } else {
+                    } else if (currentOrder.getClientOrderId().startsWith(currentOrder.getName())) {
                         trackingOrders.add(currentOrder);
                     }
                 }
@@ -143,7 +143,7 @@ public class Strategy07 implements Strategy {
                         } catch (StrategyException e) {
                             throw new CompletionException("failed to init cancel order: " + currentOrder, e);
                         }
-                    } else {
+                    } else if (currentOrder.getClientOrderId().startsWith(currentOrder.getName())) {
                         trackingOrders.add(currentOrder);
                     }
                 }
@@ -491,11 +491,18 @@ public class Strategy07 implements Strategy {
 
         AsyncStateOrder order = null;
         if (side.equals(OrderSide.BUY)) {
-            DepthPrice depthPrice = accountActor.getBidDepthPrice(other.getAccount(),
+            DepthPrice otherDepth = accountActor.getBidDepthPrice(other.getAccount(),
                     other.getName(), other.getSymbol(), (int) orderQuantity);
+            DepthPrice currentDepth = accountActor.getBidDepthPrice(info.getAccount(),
+                    info.getName(), info.getSymbol(), 1);
+            if (currentDepth.price > otherDepth.price) {
+                // 高买价一侧，不需要挂单，反正也成交不了
+                orderQuantity = 0;
+            }
+
             // 挂单，买一价价差配置
             double bidPriceRate = strategyConfig.getDouble("bid_price_rate", 0.0002);
-            double price = depthPrice.price;
+            double price = otherDepth.price;
 
             // 参考价格转通用货币计算
             price = price / (1 + accountActor.getCurrencyRate(other.getAccount()));
@@ -511,11 +518,18 @@ public class Strategy07 implements Strategy {
             order = new AsyncStateOrder(info.getAccount(), info.getName(), info.getSymbol(),
                     side, OrderType.LIMIT_GTC, size, price, orderQuantity, OrderState.SUBMITTING);
         } else {
-            DepthPrice depthPrice = accountActor.getAskDepthPrice(other.getAccount(),
+            DepthPrice otherDepth = accountActor.getAskDepthPrice(other.getAccount(),
                     other.getName(), other.getSymbol(), (int) orderQuantity);
+            DepthPrice currentDepth = accountActor.getAskDepthPrice(info.getAccount(),
+                    info.getName(), info.getSymbol(), 1);
+            if (currentDepth.price < otherDepth.price) {
+                // 低卖价一侧，不需要挂单
+                orderQuantity = 0;
+            }
+
             // 挂单，卖一价价差配置
             double askPriceRate = strategyConfig.getDouble("ask_price_rate", 0.0002);
-            double price = depthPrice.price;
+            double price = otherDepth.price;
 
             // 允许挂卖单
             price = price / (1 + accountActor.getCurrencyRate(other.getAccount()));
