@@ -251,6 +251,7 @@ public class Strategy07 implements Strategy {
                     order = generateMarketHedgingOrder(orderNotify, info2, info1, askOrder2.getState());
                 }
                 if (order != null) {
+                    logger.info("{}: generated hedging order: {}", System.currentTimeMillis() - timeCounter, order);
                     long startTime = System.currentTimeMillis();
                     orderTracker.submit(order).thenAccept(o -> {
                         long currentTime = System.currentTimeMillis();
@@ -333,7 +334,7 @@ public class Strategy07 implements Strategy {
                 price = price * (1 + orderProfitRate);
                 price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
-                price = Utils.floor(price, info.getPricePrecision());
+                price = Utils.floor(price, other.getPricePrecision());
             } else {
                 price = price / (1 + accountActor.getCurrencyRate(info.getAccount()));
                 price = price * (1 - accountActor.getMakerRate(orderNotify.getAccount()));
@@ -341,7 +342,7 @@ public class Strategy07 implements Strategy {
                 price = price * (1 - orderProfitRate);
                 price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
-                price = Utils.ceil(price, info.getPricePrecision());
+                price = Utils.ceil(price, other.getPricePrecision());
             }
 
 //            logger.info("{}: generate market hedging order 2: ", System.currentTimeMillis() - timeCounter);
@@ -425,8 +426,9 @@ public class Strategy07 implements Strategy {
         // 若是可以下单
         if (currentOrder == null || currentOrder.getState().equals(OrderState.CANCELLED)) {
             if (checkOrderInterval(info.getAccount() + side)) {
-                orderIndex1 = (orderIndex1 + 1) % 10000;
-                String clientOrderId = "_" + info.getName() + "_" + System.currentTimeMillis() / 3600000 + "_" + orderIndex1;
+                orderIndex1 = (orderIndex1 + 1) % 1000;
+                String timeString = String.valueOf(System.currentTimeMillis() / 60000).substring(5);
+                String clientOrderId = "_" + info.getName() + "_" + timeString + "_" + orderIndex1;
                 order.setClientOrderId(clientOrderId);
 
                 long startTime = System.currentTimeMillis();
