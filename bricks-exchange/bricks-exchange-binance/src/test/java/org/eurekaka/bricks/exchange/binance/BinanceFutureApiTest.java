@@ -82,6 +82,7 @@ public class BinanceFutureApiTest {
 //                OrderSide.BUY, OrderType.LIMIT_IOC, 2, 4.21, 9));
 //        testAsyncCancellingOrderApi(api, new Order("n1", name, symbol,
 //                OrderSide.BUY, OrderType.LIMIT_GTX, 2, 4.01, 8));
+        System.out.println(api.asyncGetOrder("XTZUSDT", "XTZ_USDT_991_392_19").get());
 
         HttpUtils.shutdownHttpClient(httpClient);
     }

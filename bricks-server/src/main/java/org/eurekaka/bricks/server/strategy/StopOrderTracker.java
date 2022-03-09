@@ -31,6 +31,7 @@ public class StopOrderTracker implements OrderTracker {
     // if 0, order is always alive until expired
     private double orderRiskRate;
     private int minOrderQuantity;
+    private int orderDelayTime;
 
     private int index;
     private int timeCounterInterval;
@@ -49,6 +50,7 @@ public class StopOrderTracker implements OrderTracker {
     public void init(List<CurrentOrder> orders) throws StrategyException {
         orderAliveTime = strategyConfig.getInt("order_alive_time", 0);
         orderRiskRate = strategyConfig.getDouble("order_risk_rate", 0D);
+        orderDelayTime = strategyConfig.getInt("order_delay_time", 800);
         minOrderQuantity = strategyConfig.getInt("min_order_quantity", 13);
 
         // 加载当前未完成的跟踪订单，启动时从交易所获取
@@ -79,7 +81,8 @@ public class StopOrderTracker implements OrderTracker {
                                 order.getPrice(), depthPrice.price);
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
-                    } else if (depthPrice.price < order.getPrice()) {
+                    } else if (depthPrice.price < order.getPrice() &&
+                            order.getTime() + orderDelayTime < System.currentTimeMillis()) {
                         logger.info("bid order should be filled, id: {}, ask price {} is lower than order price {}",
                                 order.getClientOrderId(), depthPrice.price, order.getPrice());
                         expiredOrderMap.put(order.getClientOrderId(), order);
@@ -95,7 +98,8 @@ public class StopOrderTracker implements OrderTracker {
                                 order.getClientOrderId(), order.getPrice(), depthPrice.price);
                         expiredOrderMap.put(order.getClientOrderId(), order);
                         continue;
-                    } else if (depthPrice.price > order.getPrice()) {
+                    } else if (depthPrice.price > order.getPrice() &&
+                            order.getTime() + orderDelayTime < System.currentTimeMillis()) {
                         logger.info("ask order should be filled, bid price {} is higher than order price {}",
                                 depthPrice.price, order.getPrice());
                         expiredOrderMap.put(order.getClientOrderId(), order);
@@ -167,6 +171,8 @@ public class StopOrderTracker implements OrderTracker {
                 }).thenAccept(currentOrder -> {
                     if (currentOrder == null) {
                         logger.warn("order not existed: {}", order);
+                        // try again later.
+                        trackingOrderMap.put(order.getClientOrderId(), order);
                         return;
                     }
                     if (OrderStatus.FILLED.equals(currentOrder.getStatus())) {

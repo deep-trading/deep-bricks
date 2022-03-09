@@ -611,7 +611,9 @@ public class AbstractExchange<A extends AccountStatus, B extends ExApi> implemen
                 if (isAlive()) {
                     sendPingBuffer();
                 } else {
-                    logger.warn("{} exchange account is dead.", getName());
+                    logger.warn("{} exchange account is dead, input closed: {}, output closed: {}, lost time: {}",
+                            getName(), webSocket.isInputClosed(), webSocket.isOutputClosed(),
+                            System.currentTimeMillis() - accountStatus.getLastPongTime());
                     if (webSocket != null) {
                         webSocket.abort();
                     }

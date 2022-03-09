@@ -334,7 +334,7 @@ public class Strategy07 implements Strategy {
                 price = price * (1 + orderProfitRate);
                 price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
-                price = Utils.floor(price, other.getPricePrecision());
+                price = Utils.ceil(price, other.getPricePrecision());
             } else {
                 price = price / (1 + accountActor.getCurrencyRate(info.getAccount()));
                 price = price * (1 - accountActor.getMakerRate(orderNotify.getAccount()));
@@ -342,7 +342,7 @@ public class Strategy07 implements Strategy {
                 price = price * (1 - orderProfitRate);
                 price = price * (1 + accountActor.getCurrencyRate(other.getAccount()));
 
-                price = Utils.ceil(price, other.getPricePrecision());
+                price = Utils.floor(price, other.getPricePrecision());
             }
 
 //            logger.info("{}: generate market hedging order 2: ", System.currentTimeMillis() - timeCounter);

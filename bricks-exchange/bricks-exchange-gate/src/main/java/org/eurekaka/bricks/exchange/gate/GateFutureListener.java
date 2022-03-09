@@ -34,7 +34,7 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
         start = System.currentTimeMillis();
 
         if (orderBookLimit > 200) {
-            orderBookLimit = 100;
+            orderBookLimit = 20;
         }
     }
 
@@ -87,8 +87,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 //            }
         } else if ("futures.order_book_update".equals(resp.channel) && "update".equals(resp.event)) {
             GateWebSocketResultV3 result = reader3.readValue(resp.result);
-//            logger.info("book update, elapsed time: {}, message: {}",
-//                    System.currentTimeMillis() - result.time, message);
+            logger.info("book update, elapsed time: {}, message: {}",
+                    System.currentTimeMillis() - result.time, message);
             List<OrderBookValue.PriceSizePair> bidPairs = new ArrayList<>();
             for (GatePriceSizePair bid : result.bids) {
                 bidPairs.add(new OrderBookValue.PriceSizePair(bid.price, api.getSize(result.symbol, bid.size)));
@@ -127,8 +127,8 @@ public class GateFutureListener extends WebSocketListener<FutureAccountStatus, G
 //            }
         } else if ("futures.book_ticker".equals(resp.channel) && "update".equals(resp.event)) {
             GateWebSocketResultV2 result = reader2.readValue(resp.result);
-//            logger.info("book ticker, elapsed time: {}, message: {}",
-//                    System.currentTimeMillis() - result.time, message);
+            logger.info("book ticker, elapsed time: {}, message: {}",
+                    System.currentTimeMillis() - result.time, message);
             if (result.bidPrice > 0 && result.bidSize != 0) {
 //                accountStatus.updateBidOrderBookTicker(result.contract,
 //                        result.bidPrice, api.getSize(result.contract, result.bidSize));

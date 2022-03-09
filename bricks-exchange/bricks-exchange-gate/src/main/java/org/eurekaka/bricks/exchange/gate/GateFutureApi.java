@@ -44,7 +44,7 @@ public class GateFutureApi implements FutureExApi {
         this.accountConfig = accountConfig;
         this.httpClient = httpClient;
         this.timeout = Duration.ofMillis(Integer.parseInt(
-                accountConfig.getProperty("http_request_timeout", "1500")));
+                accountConfig.getProperty("http_request_timeout", "30000")));
 
         this.contractQuantos = new ConcurrentHashMap<>();
 
